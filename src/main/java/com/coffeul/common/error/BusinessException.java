@@ -11,19 +11,29 @@ public class BusinessException extends RuntimeException {
 
     private final ErrorCode errorCode;
     private final List<ApiResponse.FieldError> errors;
+    private final Object data;
 
     public BusinessException(ErrorCode errorCode) {
-        this(errorCode, errorCode.message(), null);
+        this(errorCode, errorCode.message(), null, null);
     }
 
     public BusinessException(ErrorCode errorCode, String message) {
-        this(errorCode, message, null);
+        this(errorCode, message, null, null);
     }
 
     public BusinessException(ErrorCode errorCode, String message, List<ApiResponse.FieldError> errors) {
+        this(errorCode, message, errors, null);
+    }
+
+    public static BusinessException withData(ErrorCode errorCode, String message, Object data) {
+        return new BusinessException(errorCode, message, null, data);
+    }
+
+    private BusinessException(ErrorCode errorCode, String message, List<ApiResponse.FieldError> errors, Object data) {
         super(message);
         this.errorCode = errorCode;
         this.errors = errors;
+        this.data = data;
     }
 
     public ErrorCode errorCode() {
@@ -32,5 +42,9 @@ public class BusinessException extends RuntimeException {
 
     public List<ApiResponse.FieldError> errors() {
         return errors;
+    }
+
+    public Object data() {
+        return data;
     }
 }

@@ -33,9 +33,12 @@ coffeul:
     payment-expire-minutes: 20
   payment:
     max-attempts: 5
+    gateway: ${PAYMENT_GATEWAY:fake}
   verification:
     code-ttl-seconds: 300
   business-zone: Asia/Seoul
+  cdn:
+    base-url: ${CDN_BASE_URL:}
 
 ---
 spring:

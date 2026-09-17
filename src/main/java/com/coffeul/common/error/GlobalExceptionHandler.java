@@ -21,10 +21,12 @@ public class GlobalExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(BusinessException.class)
-    public ResponseEntity<ApiResponse<Void>> handleBusinessException(BusinessException ex) {
+    public ResponseEntity<ApiResponse<Object>> handleBusinessException(BusinessException ex) {
         ErrorCode errorCode = ex.errorCode();
-        return ResponseEntity.status(errorCode.status())
-                .body(ApiResponse.error(errorCode, ex.getMessage(), ex.errors()));
+        ApiResponse<Object> body = ex.data() != null
+                ? ApiResponse.errorWithData(errorCode, ex.getMessage(), ex.data())
+                : ApiResponse.error(errorCode, ex.getMessage(), ex.errors());
+        return ResponseEntity.status(errorCode.status()).body(body);
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

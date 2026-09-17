@@ -44,8 +44,19 @@ SOURCE db/seed/menu-seed.sql;
 
 메뉴 데이터를 고칠 땐 이 SQL을 직접 고치지 말고 `menu_seed.py`(또는 그 입력인 `menu-official-2026-09-10.json`)를 고친 뒤 재생성한다.
 
+## 기준 구현 (메뉴 조회 · 주문 생성)
+
+- **MS-9 · MS-10** (`GET /stores/{storeId}/categories`, `GET /stores/{storeId}/menus`) — menu 모듈, 완전히 동작.
+- **MS-16** (`POST /orders`) — order 모듈. store.api(영업 상태) · menu.api(품절 · 옵션 · 가격) · member.api(계정 상태) · payment.api(결제창 정보)를 모듈 경계 그대로 호출해서 조립하는 구조를 보여주는 참조 구현.
+  - **알려진 한계** (다음 사람이 이어받을 때 볼 것):
+    1. auth 모듈이 없어 `X-Member-Id` 헤더로 회원을 임시 식별한다. 실제로는 `auth.api.AuthUser`로 교체.
+    2. `payment` 테이블 행을 저장하지 않는다 — `merchant_pg`가 없어서(사업자 정보 미확정). 응답의 `payment` 블록은 `FakePaymentGatewayAdapter`가 계산만 해서 채운다.
+    3. Idempotency-Key 재요청 시 결제 정보를 다시 계산해서 돌려준다(영속화가 없어서) — 가짜 어댑터가 orderCode만으로 결정되는 순수 함수라 지금은 우연히 일관되지만, 실제 PG 붙으면 재요청은 저장된 값을 그대로 반환하도록 바꿔야 한다.
+  - 옵션 검증(`MenuSelectionValidator`)·가격 계산(`LinePricing`)은 DB·Spring 없이 도는 순수 로직 — `./mvnw test`로 지금 바로 돌아간다.
+
 ## 현재 상태 (2026-09-17)
 
-- 프로젝트 세팅 + 공통 응답/에러(`common.response.ApiResponse`, `common.error.*`) + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL(위) 완료.
-- 이 환경엔 Docker가 없어서 Testcontainers 기반 통합 테스트는 아직 추가 안 함(`pom.xml`엔 의존성만 있음). Docker 있는 환경에서 이어서 작성 필요. 메뉴 시드 SQL도 실제 MySQL에 돌려본 적은 없음 — 카운트 검증(41개 메뉴 등)만 파이썬 단에서 통과.
-- 다음: 기준 구현 1벌(메뉴 조회 · 주문 생성) + 테스트 뼈대.
+- 프로젝트 세팅 + 공통 응답/에러 + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL + 기준 구현(메뉴 조회 · 주문 생성) 완료.
+- `./mvnw test` 통과: ModularityTests(모듈 경계 11개 전부 통과, order → store·menu·payment·member로 정확히 잡힘) + 도메인 단위 테스트 8개.
+- 이 환경엔 Docker가 없어서 Testcontainers 기반 통합 테스트(실제 MySQL에 저장까지 확인)는 아직 못 씀. 메뉴 시드 SQL도, 주문 생성 API도 실제 MySQL에는 아직 못 돌려봄 — school·merchant·store 실데이터가 없어서이기도 함(위 "메뉴 시드" 참고).
+- 다음: `school`·`merchant`·`store` 실데이터(사장님 서류 나오면) → 메뉴 시드 실행 → Docker로 Testcontainers 통합 테스트 → 주문 상태 전이(수락·거절·환불) 등 나머지 API.

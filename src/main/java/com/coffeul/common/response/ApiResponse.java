@@ -36,6 +36,10 @@ public record ApiResponse<T>(
         return error(errorCode, errorCode.message(), null);
     }
 
+    public static <T> ApiResponse<T> errorWithData(ErrorCode errorCode, String message, T data) {
+        return new ApiResponse<>(OffsetDateTime.now(), errorCode.status(), errorCode.code(), message, data, null);
+    }
+
     public record FieldError(String field, String reason) {
     }
 }
