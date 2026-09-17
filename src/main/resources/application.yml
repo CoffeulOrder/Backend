@@ -1,0 +1,52 @@
+# 실제 값은 팀원 각자 .env(커밋 안 함) 또는 로컬 환경변수로 채운다.
+# 키 목록 근거: docs/scope-src/rules.py CONFIG_KEYS (개발 규칙 탭 원본)
+
+spring:
+  application:
+    name: coffeul-backend
+
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/coffeul?serverTimezone=UTC&characterEncoding=UTF-8}
+    username: ${DB_USERNAME:}
+    password: ${DB_PASSWORD:}
+
+  jpa:
+    hibernate:
+      # 운영 DB는 ddl-auto=validate, 스키마 변경은 Flyway로만 (설계안 ver 0.7 확정 사항)
+      ddl-auto: validate
+    open-in-view: false
+
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
+# 도메인 정책 값은 여기에 모아두고 코드에 숫자를 박지 않는다 (rules.py CONFIG_KEYS)
+coffeul:
+  order:
+    payment-expire-minutes: 20
+  payment:
+    max-attempts: 5
+  verification:
+    code-ttl-seconds: 300
+  business-zone: Asia/Seoul
+
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
