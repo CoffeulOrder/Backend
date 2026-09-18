@@ -48,7 +48,8 @@
 ## 메뉴 시드
 
 `src/main/resources/db/seed/menu-seed.sql`은 공식 메뉴 CSV(102행)를 `docs/scope-src/menu_seed.py`(REQ-MN-006)로 변환한 것.
-**Flyway 마이그레이션이 아니다** — `school`·`merchant`·`store`가 아직 없어서(사업자등록번호 등 진짜 값 없이는 만들지 않음), store가 생긴 뒤 매장마다 수동 실행한다.
+**Flyway 마이그레이션이 아니다** — `merchant`·`store`가 아직 없어서(사업자등록번호 등 진짜 값 없이는 만들지 않음), store가 생긴 뒤 매장마다 수동 실행한다.
+(`school`과 `school_email_domain`은 사업자 정보가 필요 없어서 V2 마이그레이션으로 들어가 있다 — 아래 "학교 데이터" 참고.)
 
 ```sql
 SET @coffeul_store_id = 1; -- 범석관 store.id로 교체
@@ -57,6 +58,16 @@ SOURCE db/seed/menu-seed.sql;
 ```
 
 메뉴 데이터를 고칠 땐 이 SQL을 직접 고치지 말고 `menu_seed.py`(또는 그 입력인 `menu-official-2026-09-10.json`)를 고친 뒤 재생성한다.
+
+## 학교 데이터
+
+`V2__seed_eulji_school.sql` — 을지대학교 성남캠퍼스 + 이메일 도메인 `g.eulji.ac.kr`.
+
+`school_email_domain`에 행이 없으면 REQ-EV-001이 **모든 가입을 EV001로 막아서** 서버가 회원을 하나도 못 받는다.
+통합 테스트는 각자 도메인을 심어서 통과하므로, 진짜 도메인이 동작하는지는 `SchoolSeedIntegrationTest`에서만 확인된다.
+
+새 학교를 받을 땐 코드가 아니라 같은 방식으로 행을 추가한다 (설계안: "학교는 코드가 아니라 데이터").
+스키마 변경이 아니라 기준 데이터라서 `erd.py`는 건드리지 않는다.
 
 ## 기준 구현 (메뉴 조회 · 주문 생성)
 
