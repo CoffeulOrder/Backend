@@ -26,6 +26,20 @@
 2. MySQL 8.4(로컬 또는 Docker)에 `coffeul` 데이터베이스 생성
 3. `./mvnw spring-boot:run`
 
+## 통합 테스트 (Testcontainers)
+
+`./mvnw test`는 실제 MySQL 8.4 컨테이너를 띄워서 Flyway 마이그레이션 + JPA 스키마 검증 + API까지 엔드투엔드로 확인한다
+(`src/test/java/com/coffeul/AbstractIntegrationTest.java` — 전체 테스트 실행에서 컨테이너 하나를 공유하는 싱글턴).
+
+- Java는 **21**이어야 한다 (`java -version`으로 확인. macOS에서 Homebrew로 17과 21이 같이 깔려있으면 `JAVA_HOME`을 21로 명시: `export JAVA_HOME=$(brew --prefix openjdk@21)/libexec/openjdk.jdk/Contents/Home`).
+- **Colima**를 쓰는 경우(Docker Desktop이 아니라) 소켓 경로가 표준이 아니라서 아래 두 환경변수가 필요하다:
+  ```bash
+  export DOCKER_HOST=unix://$HOME/.colima/default/docker.sock
+  export TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE=/var/run/docker.sock
+  ```
+  (`DOCKER_HOST`는 맥 쪽에서 Colima VM에 접속하는 경로, `TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE`는 Ryuk 컨테이너가 VM *내부*에서 인식하는 소켓 경로 — 이게 없으면 Ryuk가 "operation not supported"로 뜨지 않는다.)
+- Docker Desktop을 쓰면 위 두 변수는 필요 없다.
+
 ## 모듈 구조
 
 `com.coffeul.{module}` — `auth · member · verification · store · menu · order · payment · notification · settlement · file`.
@@ -54,9 +68,11 @@ SOURCE db/seed/menu-seed.sql;
     3. Idempotency-Key 재요청 시 결제 정보를 다시 계산해서 돌려준다(영속화가 없어서) — 가짜 어댑터가 orderCode만으로 결정되는 순수 함수라 지금은 우연히 일관되지만, 실제 PG 붙으면 재요청은 저장된 값을 그대로 반환하도록 바꿔야 한다.
   - 옵션 검증(`MenuSelectionValidator`)·가격 계산(`LinePricing`)은 DB·Spring 없이 도는 순수 로직 — `./mvnw test`로 지금 바로 돌아간다.
 
-## 현재 상태 (2026-09-17)
+## 현재 상태 (2026-09-18)
 
 - 프로젝트 세팅 + 공통 응답/에러 + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL + 기준 구현(메뉴 조회 · 주문 생성) 완료.
-- `./mvnw test` 통과: ModularityTests(모듈 경계 11개 전부 통과, order → store·menu·payment·member로 정확히 잡힘) + 도메인 단위 테스트 8개.
-- 이 환경엔 Docker가 없어서 Testcontainers 기반 통합 테스트(실제 MySQL에 저장까지 확인)는 아직 못 씀. 메뉴 시드 SQL도, 주문 생성 API도 실제 MySQL에는 아직 못 돌려봄 — school·merchant·store 실데이터가 없어서이기도 함(위 "메뉴 시드" 참고).
-- 다음: `school`·`merchant`·`store` 실데이터(사장님 서류 나오면) → 메뉴 시드 실행 → Docker로 Testcontainers 통합 테스트 → 주문 상태 전이(수락·거절·환불) 등 나머지 API.
+- Testcontainers로 실제 MySQL 8.4에 붙는 통합 테스트 추가: 주문 생성 → 주문·주문항목·옵션이 정확한 금액으로 저장되는지, 같은 Idempotency-Key 재요청이 중복 주문을 만들지 않는지, 품절 메뉴 주문이 아예 저장되지 않는지 확인. 메뉴 시드 SQL도 실제 컨테이너에서 돌려서 41개 메뉴·7개 카테고리·105개 옵션이 정확히 들어가는지 확인함.
+  - 이 과정에서 JPA 엔티티 필드 타입이 실제 DB 물리 타입과 다른 버그 3건을 실제 MySQL로만 잡을 수 있었다(H2·모킹으로는 안 잡힘): `OptionGroup.minSelect/maxSelect`(TINYINT인데 int), `OrderLine.quantity`(SMALLINT인데 int), `Order.requestHash`(CHAR(64)인데 columnDefinition 없는 String → VARCHAR로 추론). 전부 수정 완료.
+- `./mvnw test` 통과: ModularityTests(모듈 경계 11개 전부) + 도메인 단위 테스트 8개 + 통합 테스트 4개 = 14개 전부 그린.
+- 로컬 실행 조건: Java 21, Docker(Colima 포함) — 자세한 건 위 "통합 테스트" 절 참고.
+- 다음: `school`·`merchant`·`store` 실데이터(사장님 서류 나오면) → 메뉴 시드를 실제 운영 DB에 실행 → 주문 상태 전이(수락·거절·환불) 등 나머지 API.

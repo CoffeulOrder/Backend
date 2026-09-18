@@ -29,10 +29,10 @@ public class OptionGroup {
     private boolean required = true;
 
     @Column(name = "min_select", nullable = false)
-    private int minSelect = 1;
+    private byte minSelect = 1;
 
     @Column(name = "max_select", nullable = false)
-    private int maxSelect = 1;
+    private byte maxSelect = 1;
 
     @Column(name = "sort_order", nullable = false)
     private int sortOrder;

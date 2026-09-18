@@ -32,7 +32,7 @@ public class OrderLine {
     private int unitPrice;
 
     @Column(name = "quantity", nullable = false)
-    private int quantity;
+    private short quantity;
 
     @Column(name = "line_amount", nullable = false)
     private int lineAmount;
@@ -48,7 +48,7 @@ public class OrderLine {
         line.menuNameSnapshot = menuNameSnapshot;
         line.basePriceSnapshot = basePriceSnapshot;
         line.unitPrice = unitPrice;
-        line.quantity = quantity;
+        line.quantity = (short) quantity;
         line.lineAmount = unitPrice * quantity;
         return line;
     }
