@@ -3,16 +3,20 @@ package com.coffeul.support;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.time.Instant;
 
 /**
  * 통합 테스트용 최소 데이터 시딩 헬퍼. 실제 사업자 정보(merchant)는 여전히 가짜 값이며,
  * 프로덕션 시드(menu-seed.sql)와는 별개로 각 테스트가 필요한 것만 최소로 심는다.
  */
 public class TestFixtures {
+
+    private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final JdbcTemplate jdbc;
 
@@ -41,6 +45,43 @@ public class TestFixtures {
         return insert("INSERT INTO `member` (`school_id`, `email`, `password_hash`, `name`, `status`) " +
                         "VALUES (?, ?, ?, ?, ?)",
                 schoolId, email, "{bcrypt}테스트해시", "테스트회원", status);
+    }
+
+    public long createMemberWithPassword(long schoolId, String email, String rawPassword, String status) {
+        return insert("INSERT INTO `member` (`school_id`, `email`, `password_hash`, `name`, `status`) " +
+                        "VALUES (?, ?, ?, ?, ?)",
+                schoolId, email, PASSWORD_ENCODER.encode(rawPassword), "테스트회원", status);
+    }
+
+    public long createStaffAccount(Long merchantId, String role, String loginId, String rawPassword,
+                                    String name, String status) {
+        return insert("INSERT INTO `staff_account` (`merchant_id`, `role`, `login_id`, `password_hash`, " +
+                        "`name`, `status`) VALUES (?, ?, ?, ?, ?, ?)",
+                merchantId, role, loginId, PASSWORD_ENCODER.encode(rawPassword), name, status);
+    }
+
+    public void createStaffStore(long staffAccountId, long storeId) {
+        jdbc.update("INSERT INTO `staff_store` (`staff_account_id`, `store_id`) VALUES (?, ?)",
+                staffAccountId, storeId);
+    }
+
+    public int countRefreshTokensBySubject(String subjectType, long subjectId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM `refresh_token` WHERE `subject_type` = ? AND `subject_id` = ?",
+                Integer.class, subjectType, subjectId);
+        return count == null ? 0 : count;
+    }
+
+    public int countActiveRefreshTokensBySubject(String subjectType, long subjectId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM `refresh_token` WHERE `subject_type` = ? AND `subject_id` = ? AND `revoked_at` IS NULL",
+                Integer.class, subjectType, subjectId);
+        return count == null ? 0 : count;
+    }
+
+    /** 재사용 감지의 30초 유예 창을 테스트에서 실제로 기다리지 않고 검증하기 위한 헬퍼. */
+    public void ageRefreshTokenRevocation(String tokenHash, Instant revokedAt) {
+        jdbc.update("UPDATE `refresh_token` SET `revoked_at` = ? WHERE `token_hash` = ?", revokedAt, tokenHash);
     }
 
     public long createCategory(long storeId, String name) {

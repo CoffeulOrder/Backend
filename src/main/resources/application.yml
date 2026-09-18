@@ -29,6 +29,14 @@ management:
 
 # 도메인 정책 값은 여기에 모아두고 코드에 숫자를 박지 않는다 (rules.py CONFIG_KEYS)
 coffeul:
+  auth:
+    # rules.py AUTH_SPEC: access 토큰 HS256 · 비밀키 256비트 이상. 로컬 전용 기본값 — 운영은 JWT_SECRET(Secrets Manager)으로 반드시 덮어쓴다.
+    jwt-secret: ${JWT_SECRET:coffeul-local-dev-only-secret-please-override-in-prod-minimum-32-bytes}
+    access-token-expire-minutes: 60
+    member-refresh-token-expire-days: 14
+    staff-refresh-token-expire-days: 30
+    member-login-lock-minutes: 15
+    staff-login-lock-seconds: 30
   order:
     payment-expire-minutes: 20
   payment:

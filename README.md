@@ -68,11 +68,21 @@ SOURCE db/seed/menu-seed.sql;
     3. Idempotency-Key 재요청 시 결제 정보를 다시 계산해서 돌려준다(영속화가 없어서) — 가짜 어댑터가 orderCode만으로 결정되는 순수 함수라 지금은 우연히 일관되지만, 실제 PG 붙으면 재요청은 저장된 값을 그대로 반환하도록 바꿔야 한다.
   - 옵션 검증(`MenuSelectionValidator`)·가격 계산(`LinePricing`)은 DB·Spring 없이 도는 순수 로직 — `./mvnw test`로 지금 바로 돌아간다.
 
+## 기준 구현 (인증)
+
+- **MS-1 · MS-2 · MS-3 · MS-4** (`POST /auth/login`, `/auth/staff/login`, `/auth/refresh`, `/auth/logout`) — auth 모듈, rules.py AUTH_SPEC 그대로.
+  - access 토큰은 JWT(HS256, 1시간), refresh 토큰은 JWT가 아닌 256비트 무작위 문자열 — DB엔 SHA-256 해시만 저장(`refresh_token` 테이블).
+  - `auth`는 `member`·`store`를 직접 import하지 않는다 — `MemberCredentialPort`·`StaffCredentialPort`를 auth가 정의하고 각 모듈이 역방향으로 구현.
+  - refresh 토큰 회전 + 재사용 감지(탈취 의심 시 같은 계열 전부 폐기, 단 폐기 후 30초 안이면 동시 요청으로 보고 새 쌍만 발급), 로그인 실패 잠금(고객 5회→15분 / 직원 5회째부터 30초 대기)까지 구현하고 통합 테스트로 검증.
+  - **알려진 한계**: 다른 컨트롤러(주문 등)에서 이 토큰을 실제로 검사하는 배선(`AuthUser` 인자 리졸버)은 아직 없음 — MS-22~26(주문 상태 전이) 만들 때 이어붙일 예정. `JWT_SECRET` 로컬 기본값은 개발 전용이라 운영에선 반드시 Secrets Manager 값으로 덮어써야 함.
+
 ## 현재 상태 (2026-09-18)
 
-- 프로젝트 세팅 + 공통 응답/에러 + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL + 기준 구현(메뉴 조회 · 주문 생성) 완료.
-- Testcontainers로 실제 MySQL 8.4에 붙는 통합 테스트 추가: 주문 생성 → 주문·주문항목·옵션이 정확한 금액으로 저장되는지, 같은 Idempotency-Key 재요청이 중복 주문을 만들지 않는지, 품절 메뉴 주문이 아예 저장되지 않는지 확인. 메뉴 시드 SQL도 실제 컨테이너에서 돌려서 41개 메뉴·7개 카테고리·105개 옵션이 정확히 들어가는지 확인함.
-  - 이 과정에서 JPA 엔티티 필드 타입이 실제 DB 물리 타입과 다른 버그 3건을 실제 MySQL로만 잡을 수 있었다(H2·모킹으로는 안 잡힘): `OptionGroup.minSelect/maxSelect`(TINYINT인데 int), `OrderLine.quantity`(SMALLINT인데 int), `Order.requestHash`(CHAR(64)인데 columnDefinition 없는 String → VARCHAR로 추론). 전부 수정 완료.
-- `./mvnw test` 통과: ModularityTests(모듈 경계 11개 전부) + 도메인 단위 테스트 8개 + 통합 테스트 4개 = 14개 전부 그린.
+- 프로젝트 세팅 + 공통 응답/에러 + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL + 기준 구현(메뉴 조회 · 주문 생성 · 인증) 완료.
+- Testcontainers로 실제 MySQL 8.4에 붙는 통합 테스트 추가: 주문 생성 → 주문·주문항목·옵션이 정확한 금액으로 저장되는지, 같은 Idempotency-Key 재요청이 중복 주문을 만들지 않는지, 품절 메뉴 주문이 아예 저장되지 않는지 확인. 메뉴 시드 SQL도 실제 컨테이너에서 돌려서 41개 메뉴·7개 카테고리·105개 옵션이 정확히 들어가는지 확인함. 이어서 로그인·토큰 재발급·로그아웃 흐름도 통합 테스트로 검증.
+  - 이 과정에서 실제 MySQL로만 잡을 수 있던 버그를 여럿 고쳤다(H2·모킹으로는 안 잡힘):
+    - JPA 엔티티 필드 타입이 DB 물리 타입과 다름 — `OptionGroup.minSelect/maxSelect`(TINYINT인데 int), `OrderLine.quantity`(SMALLINT인데 int), `Order.requestHash`(CHAR(64)인데 columnDefinition 없는 String → VARCHAR로 추론).
+    - **로그인 실패 카운트·재사용 감지 시 계열 폐기가 트랜잭션 롤백에 같이 사라지는 버그** — `BusinessException`을 던지기 전에 DB에 기록한 내용이, 그 예외 때문에 트랜잭션 전체가 롤백되면서 함께 사라짐(Spring 기본은 RuntimeException에서 전체 롤백). `noRollbackFor = BusinessException.class`로 고침 — 안 고쳤으면 5회 실패 잠금과 토큰 탈취 감지가 둘 다 조용히 작동 안 했을 것.
+- `./mvnw test` 통과: ModularityTests(모듈 경계 12개 전부) + 도메인 단위 테스트 8개 + 통합 테스트 9개 = 19개 전부 그린.
 - 로컬 실행 조건: Java 21, Docker(Colima 포함) — 자세한 건 위 "통합 테스트" 절 참고.
-- 다음: `school`·`merchant`·`store` 실데이터(사장님 서류 나오면) → 메뉴 시드를 실제 운영 DB에 실행 → 주문 상태 전이(수락·거절·환불) 등 나머지 API.
+- 다음: 주문 상태 전이(MS-22~26) — 단, MS-27(결제 승인)이 먼저 있어야 주문이 REQUESTED로 올라가고, MS-16도 결제 시도를 실제로 저장하도록 보강해야 함. 거절·취소는 환불 정책(Q2) 확정 전까지 보류. `school`·`merchant`·`store` 실데이터는 사장님 서류(Q3) 나오면.

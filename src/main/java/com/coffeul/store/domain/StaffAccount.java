@@ -1,4 +1,4 @@
-package com.coffeul.member.domain;
+package com.coffeul.store.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -9,25 +9,28 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** schema.sql `member` 테이블 매핑 (일부 컬럼만 — 기준 구현 범위. 가입은 아직 없어 로그인에 필요한 필드만 담음). */
+/** schema.sql `staff_account` 테이블 매핑. OWNER=사장님, STAFF=직원(태블릿), ADMIN=운영자(merchant_id NULL). */
 @Entity
-@Table(name = "member")
-public class Member {
+@Table(name = "staff_account")
+public class StaffAccount {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "school_id", nullable = false)
-    private Long schoolId;
+    @Column(name = "merchant_id")
+    private Long merchantId;
 
-    @Column(name = "email", length = 100)
-    private String email;
+    @Column(name = "role", nullable = false, length = 10)
+    private String role;
 
-    @Column(name = "password_hash", length = 100)
+    @Column(name = "login_id", nullable = false, length = 50)
+    private String loginId;
+
+    @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
-    @Column(name = "name", nullable = false, length = 30)
+    @Column(name = "name", nullable = false, length = 50)
     private String name;
 
     @Column(name = "status", nullable = false, length = 20)
@@ -42,19 +45,23 @@ public class Member {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
-    protected Member() {
+    protected StaffAccount() {
     }
 
     public Long getId() {
         return id;
     }
 
-    public Long getSchoolId() {
-        return schoolId;
+    public Long getMerchantId() {
+        return merchantId;
     }
 
-    public String getEmail() {
-        return email;
+    public String getRole() {
+        return role;
+    }
+
+    public String getLoginId() {
+        return loginId;
     }
 
     public String getPasswordHash() {

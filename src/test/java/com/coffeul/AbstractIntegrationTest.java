@@ -16,10 +16,14 @@ import org.testcontainers.containers.MySQLContainer;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 public abstract class AbstractIntegrationTest {
 
+    // serverTimezone=UTC — application.yml의 운영 접속 문자열과 맞춘다. 없으면 JVM 로컬 시간대(KST 등)로
+    // Instant를 변환해서, 테스트에서 raw JDBC로 넣은 시각과 JPA(Hibernate, UTC)로 읽은 시각이 어긋난다.
     static final MySQLContainer<?> MYSQL = new MySQLContainer<>("mysql:8.4")
             .withDatabaseName("coffeul")
             .withUsername("coffeul")
-            .withPassword("coffeul");
+            .withPassword("coffeul")
+            .withUrlParam("serverTimezone", "UTC")
+            .withUrlParam("characterEncoding", "UTF-8");
 
     static {
         MYSQL.start();
