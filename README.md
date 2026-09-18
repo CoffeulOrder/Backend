@@ -76,6 +76,19 @@ SOURCE db/seed/menu-seed.sql;
   - refresh 토큰 회전 + 재사용 감지(탈취 의심 시 같은 계열 전부 폐기, 단 폐기 후 30초 안이면 동시 요청으로 보고 새 쌍만 발급), 로그인 실패 잠금(고객 5회→15분 / 직원 5회째부터 30초 대기)까지 구현하고 통합 테스트로 검증.
   - **알려진 한계**: 다른 컨트롤러(주문 등)에서 이 토큰을 실제로 검사하는 배선(`AuthUser` 인자 리졸버)은 아직 없음 — MS-22~26(주문 상태 전이) 만들 때 이어붙일 예정. `JWT_SECRET` 로컬 기본값은 개발 전용이라 운영에선 반드시 Secrets Manager 값으로 덮어써야 함.
 
+## 기준 구현 (이메일 인증)
+
+- **SM-1 · SM-2** (`POST /verifications/email`, `/verifications/email/confirm`) — verification 모듈, REQ-EV-001~007 그대로.
+  - 6자리 코드는 5분, 확인 성공 시 받는 인증 토큰(`evt_...`)은 30분. **둘 다 DB엔 SHA-256 해시만 남는다.**
+  - 재발송 제한 60초(EV002) · 하루 10회(EV003, Asia/Seoul 자정 기준) · 확인 5회 실패 시 코드 폐기(EV005).
+  - 메일은 `VerificationMailSender` 포트 뒤에 있고 지금은 **로그 어댑터**만 있다(`MAIL_PROVIDER=log`).
+    로컬에서 인증코드는 서버 로그의 `[가짜 메일]` 줄에서 본다. SES 어댑터는 발신 도메인 확보 + 샌드박스 해제 후.
+  - `verification`은 `member`를 import하지 않는다 — 가입 여부 확인은 verification이 `MemberAccountPort`를 정의하고
+    member가 역방향으로 구현한다(그러지 않으면 SM-3에서 순환 의존).
+  - 인증코드 정리 스케줄(매일 04:00 KST, 만료 후 7일 지난 행 삭제)까지 포함.
+  - **팀 결정 대기**: REQ-EV-006(이미 가입된 이메일에 EV006으로 알려줄지)은 명세가 '미정'이라 일단 알려주는 쪽으로 구현했다.
+    숨기는 쪽으로 정해지면 `SendVerificationCodeService`의 SIGNUP 분기만 PASSWORD_RESET과 같은 방식으로 바꾸면 된다.
+
 ## 현재 상태 (2026-09-18)
 
 - 프로젝트 세팅 + 공통 응답/에러 + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL + 기준 구현(메뉴 조회 · 주문 생성 · 인증) 완료.
