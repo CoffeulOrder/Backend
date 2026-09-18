@@ -29,6 +29,42 @@ public class TestFixtures {
                 name, "테스트캠퍼스");
     }
 
+    public long createSchoolEmailDomain(long schoolId, String domain) {
+        return insert("INSERT INTO `school_email_domain` (`school_id`, `domain`) VALUES (?, ?)", schoolId, domain);
+    }
+
+    public long insertEmailVerification(String email, String purpose, String codeHash,
+                                         Instant expiresAt, Instant createdAt) {
+        return insert("INSERT INTO `email_verification` (`email`, `purpose`, `code_hash`, `expires_at`, `created_at`) " +
+                        "VALUES (?, ?, ?, ?, ?)",
+                email, purpose, codeHash, expiresAt, createdAt);
+    }
+
+    public int countEmailVerifications(String email) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `email_verification` WHERE `email` = ?",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public int attemptCountOf(String email) {
+        Integer count = jdbc.queryForObject(
+                "SELECT `attempt_count` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public String tokenHashOf(String email) {
+        return jdbc.queryForObject(
+                "SELECT `token_hash` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                String.class, email);
+    }
+
+    /** 60초 재발송 제한 · 만료를 테스트에서 실제로 기다리지 않고 검증하기 위한 헬퍼. */
+    public void ageEmailVerification(String email, Instant createdAt, Instant expiresAt) {
+        jdbc.update("UPDATE `email_verification` SET `created_at` = ?, `expires_at` = ? WHERE `email` = ?",
+                createdAt, expiresAt, email);
+    }
+
     public long createMerchant(String businessRegNo, BigDecimal commissionRate) {
         return insert("INSERT INTO `merchant` (`business_name`, `business_reg_no`, `representative_name`, " +
                         "`business_address`, `contact_phone`, `commission_rate`, `status`) " +
