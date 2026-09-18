@@ -1,7 +1,7 @@
 package com.coffeul.verification.infrastructure;
 
 import com.coffeul.verification.domain.EmailVerification;
-import com.coffeul.verification.domain.VerificationPurpose;
+import com.coffeul.verification.api.VerificationPurpose;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.Instant;
@@ -16,6 +16,8 @@ public interface EmailVerificationRepository extends JpaRepository<EmailVerifica
     long countByEmailAndCreatedAtGreaterThanEqual(String email, Instant from);
 
     Optional<EmailVerification> findTopByEmailAndPurposeOrderByCreatedAtDesc(String email, VerificationPurpose purpose);
+
+    Optional<EmailVerification> findByTokenHash(String tokenHash);
 
     /** 정리 작업(매일 04:00 KST)은 한 번에 100건씩만 지운다 (rules.py 스케줄 작업 규칙). */
     List<EmailVerification> findTop100ByExpiresAtLessThan(Instant threshold);

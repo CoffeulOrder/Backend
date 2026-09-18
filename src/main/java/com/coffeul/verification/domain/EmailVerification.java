@@ -1,5 +1,6 @@
 package com.coffeul.verification.domain;
 
+import com.coffeul.verification.api.VerificationPurpose;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -105,6 +106,20 @@ public class EmailVerification {
         this.verifiedAt = now;
         this.tokenHash = tokenHash;
         this.tokenExpiresAt = now.plus(tokenTtl);
+    }
+
+    /** 발급된 인증 토큰이 아직 쓸 수 있는 상태인지 — 용도가 다르면 여기서 걸린다 (REQ-EV-005). */
+    public boolean isTokenUsable(Instant now, VerificationPurpose expectedPurpose) {
+        return tokenHash != null
+                && consumedAt == null
+                && tokenExpiresAt != null
+                && tokenExpiresAt.isAfter(now)
+                && purpose == expectedPurpose;
+    }
+
+    /** 가입 · 재설정에 실제로 쓰였다는 표시. 한 번 찍히면 다시 쓸 수 없다. */
+    public void consume(Instant now) {
+        this.consumedAt = now;
     }
 
     public Long getId() {

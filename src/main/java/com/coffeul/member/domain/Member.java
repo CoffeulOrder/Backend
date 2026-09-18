@@ -9,7 +9,7 @@ import jakarta.persistence.Table;
 
 import java.time.Instant;
 
-/** schema.sql `member` 테이블 매핑 (일부 컬럼만 — 기준 구현 범위. 가입은 아직 없어 로그인에 필요한 필드만 담음). */
+/** schema.sql `member` 테이블 매핑 (일부 컬럼만 — 기준 구현 범위. 주문 이력 · 푸시 토큰 등은 아직 없다). */
 @Entity
 @Table(name = "member")
 public class Member {
@@ -43,6 +43,17 @@ public class Member {
     private Instant lastLoginAt;
 
     protected Member() {
+    }
+
+    /** SM-3 가입 (REQ-U-001). 학교는 인증 토큰에 묶인 이메일 도메인으로 이미 정해져서 넘어온다. */
+    public static Member register(Long schoolId, String email, String passwordHash, String name) {
+        Member member = new Member();
+        member.schoolId = schoolId;
+        member.email = email;
+        member.passwordHash = passwordHash;
+        member.name = name;
+        member.status = "ACTIVE";
+        return member;
     }
 
     public Long getId() {

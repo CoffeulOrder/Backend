@@ -1,19 +1,18 @@
 package com.coffeul.verification;
 
 import com.coffeul.AbstractIntegrationTest;
+import com.coffeul.support.MailTestConfig;
+import com.coffeul.support.RecordingMailSender;
 import com.coffeul.support.TestFixtures;
 import com.coffeul.verification.application.VerificationCleanupJob;
-import com.coffeul.verification.application.VerificationMailSender;
-import com.coffeul.verification.domain.VerificationPurpose;
+import com.coffeul.verification.api.VerificationPurpose;
 import com.coffeul.verification.infrastructure.VerificationHasher;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -34,46 +33,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * SM-1 · SM-2(인증코드 발송 · 확인) 엔드투엔드 검증.
  * rules.py 완료 기준 — "명세의 ❌ 실패 목록마다 테스트가 1개 이상 있다"에 맞춰 실패 케이스를 전부 덮는다.
  */
+@Import(MailTestConfig.class)
 class VerificationIntegrationTest extends AbstractIntegrationTest {
-
-    /** 메일은 포트 뒤에 있으므로 테스트는 가짜 어댑터로 돈다 (rules.py DOD). 코드 평문을 여기서만 꺼낸다. */
-    static class RecordingMailSender implements VerificationMailSender {
-
-        String lastEmail;
-        String lastCode;
-        VerificationPurpose lastPurpose;
-        int sendCount;
-        boolean failNext;
-
-        @Override
-        public void send(String email, VerificationPurpose purpose, String code) {
-            if (failNext) {
-                throw new MailDeliveryException("테스트용 발송 실패", null);
-            }
-            this.lastEmail = email;
-            this.lastPurpose = purpose;
-            this.lastCode = code;
-            this.sendCount++;
-        }
-
-        void reset() {
-            lastEmail = null;
-            lastCode = null;
-            lastPurpose = null;
-            sendCount = 0;
-            failNext = false;
-        }
-    }
-
-    @TestConfiguration
-    static class MailTestConfig {
-
-        @Bean
-        @Primary
-        RecordingMailSender recordingMailSender() {
-            return new RecordingMailSender();
-        }
-    }
 
     @Autowired
     private MockMvc mockMvc;

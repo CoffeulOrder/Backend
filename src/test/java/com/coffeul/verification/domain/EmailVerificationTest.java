@@ -1,5 +1,6 @@
 package com.coffeul.verification.domain;
 
+import com.coffeul.verification.api.VerificationPurpose;
 import org.junit.jupiter.api.Test;
 
 import java.time.Duration;

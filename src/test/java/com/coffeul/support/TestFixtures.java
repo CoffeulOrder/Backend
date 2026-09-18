@@ -8,7 +8,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZoneOffset;
 
 /**
  * 통합 테스트용 최소 데이터 시딩 헬퍼. 실제 사업자 정보(merchant)는 여전히 가짜 값이며,
@@ -27,6 +29,30 @@ public class TestFixtures {
     public long createSchool(String name) {
         return insert("INSERT INTO `school` (`name`, `campus`, `status`) VALUES (?, ?, 'ACTIVE')",
                 name, "테스트캠퍼스");
+    }
+
+    public int countMembersByEmail(String email) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `member` WHERE `email` = ?",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public int countTermsAgreements(long memberId) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `terms_agreement` WHERE `member_id` = ?",
+                Integer.class, memberId);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * 인증 토큰이 실제로 소비됐는지 (REQ-EV-005).
+     * <p>DATETIME은 시간대가 없어서 드라이버가 Instant로 바로 못 준다. 접속 문자열이 serverTimezone=UTC라
+     * 읽어온 값을 UTC로 해석한다 (AbstractIntegrationTest의 컨테이너 설정과 같은 전제).
+     */
+    public Instant consumedAtOf(String email) {
+        Timestamp consumedAt = jdbc.queryForObject(
+                "SELECT `consumed_at` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                Timestamp.class, email);
+        return consumedAt == null ? null : consumedAt.toLocalDateTime().toInstant(ZoneOffset.UTC);
     }
 
     public long createSchoolEmailDomain(long schoolId, String domain) {

@@ -11,7 +11,8 @@ public enum VerificationErrorCode implements ErrorCode {
     CODE_MISMATCH(400, "EV004", "인증코드가 일치하지 않아요."),
     CODE_EXPIRED(410, "EV005", "인증코드가 만료됐어요. 다시 요청해주세요."),
     EMAIL_ALREADY_REGISTERED(409, "EV006", "이미 가입된 이메일이에요."),
-    MAIL_DELIVERY_FAILED(503, "EV007", "메일을 보내지 못했어요. 잠시 후 다시 시도해주세요.");
+    MAIL_DELIVERY_FAILED(503, "EV007", "메일을 보내지 못했어요. 잠시 후 다시 시도해주세요."),
+    VERIFICATION_TOKEN_INVALID(400, "EV008", "이메일 인증을 다시 진행해주세요.");
 
     private final int status;
     private final String code;

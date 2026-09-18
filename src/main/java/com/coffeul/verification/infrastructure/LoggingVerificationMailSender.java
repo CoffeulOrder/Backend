@@ -1,7 +1,7 @@
 package com.coffeul.verification.infrastructure;
 
 import com.coffeul.verification.application.VerificationMailSender;
-import com.coffeul.verification.domain.VerificationPurpose;
+import com.coffeul.verification.api.VerificationPurpose;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

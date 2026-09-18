@@ -5,7 +5,7 @@ import com.coffeul.common.error.CommonErrorCode;
 import com.coffeul.common.response.ApiResponse;
 import com.coffeul.verification.application.ConfirmVerificationCodeService;
 import com.coffeul.verification.application.SendVerificationCodeService;
-import com.coffeul.verification.domain.VerificationPurpose;
+import com.coffeul.verification.api.VerificationPurpose;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;

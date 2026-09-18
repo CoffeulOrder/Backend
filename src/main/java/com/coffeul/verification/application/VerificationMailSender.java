@@ -1,6 +1,6 @@
 package com.coffeul.verification.application;
 
-import com.coffeul.verification.domain.VerificationPurpose;
+import com.coffeul.verification.api.VerificationPurpose;
 
 /**
  * 메일 발송 포트 (rules.py DOD: "외부 호출(PG · S3 · 메일 · Expo)은 포트 뒤에 있고 테스트는 가짜 어댑터로 돈다").
