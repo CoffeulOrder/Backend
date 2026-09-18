@@ -1,6 +1,7 @@
 package com.coffeul.verification.application;
 
 import com.coffeul.common.error.BusinessException;
+import com.coffeul.verification.api.VerificationErrorCode;
 import com.coffeul.verification.api.EmailVerificationApi;
 import com.coffeul.verification.api.VerificationPurpose;
 import com.coffeul.verification.domain.EmailVerification;

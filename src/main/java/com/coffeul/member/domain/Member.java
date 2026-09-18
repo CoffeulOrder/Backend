@@ -98,6 +98,16 @@ public class Member {
         this.lastLoginAt = now;
     }
 
+    /**
+     * 비밀번호 재설정 · 변경 (REQ-U-005 · 006). 로그인 잠금도 같이 푼다 —
+     * 5회 틀려서 잠긴 사람이 비밀번호를 재설정하고도 15분을 더 기다려야 하면 재설정한 의미가 없다.
+     */
+    public void changePassword(String newPasswordHash) {
+        this.passwordHash = newPasswordHash;
+        this.failedLoginCount = 0;
+        this.lockedUntil = null;
+    }
+
     public void recordLoginFailure(Instant lockedUntil) {
         this.failedLoginCount = this.failedLoginCount + 1;
         if (lockedUntil != null) {

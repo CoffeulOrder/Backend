@@ -1,8 +1,11 @@
-package com.coffeul.verification.application;
+package com.coffeul.verification.api;
 
 import com.coffeul.common.error.ErrorCode;
 
-/** 이메일 인증(SM-1 · SM-2) 실패 코드 — api.py 원본 그대로. */
+/**
+ * 이메일 인증(SM-1 · SM-2) 실패 코드 — api.py 원본 그대로.
+ * 에러 코드는 그대로 HTTP 응답에 나가는 공개 계약이고, 토큰을 소비하는 member가 EV008을 써야 해서 api에 둔다.
+ */
 public enum VerificationErrorCode implements ErrorCode {
 
     UNSUPPORTED_SCHOOL_DOMAIN(400, "EV001", "지원하지 않는 학교 이메일입니다."),

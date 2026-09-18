@@ -85,6 +85,12 @@ public class TestFixtures {
                 String.class, email);
     }
 
+    /** 인증 토큰 만료(30분)를 실제로 기다리지 않고 검증하기 위한 헬퍼. */
+    public void expireVerificationToken(String email, Instant tokenExpiresAt) {
+        jdbc.update("UPDATE `email_verification` SET `token_expires_at` = ? WHERE `email` = ?",
+                tokenExpiresAt, email);
+    }
+
     /** 60초 재발송 제한 · 만료를 테스트에서 실제로 기다리지 않고 검증하기 위한 헬퍼. */
     public void ageEmailVerification(String email, Instant createdAt, Instant expiresAt) {
         jdbc.update("UPDATE `email_verification` SET `created_at` = ?, `expires_at` = ? WHERE `email` = ?",
