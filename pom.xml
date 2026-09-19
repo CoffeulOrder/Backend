@@ -59,6 +59,13 @@
       <artifactId>spring-boot-starter-actuator</artifactId>
     </dependency>
 
+    <!-- API 문서 (rules.py 완료 기준: "Swagger 응답 예시"). Maven Central 최신 안정판(2025-03) 확인 후 반영 -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.8.6</version>
+    </dependency>
+
     <!-- 모듈 경계 (rules.py: "경계는 CI 테스트(Spring Modulith verify)가 자동으로 검사") -->
     <dependency>
       <groupId>org.springframework.modulith</groupId>

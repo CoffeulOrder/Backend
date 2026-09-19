@@ -19,12 +19,14 @@
 | Spring Modulith | 1.4.1 | 설계안 ver 0.7.1에서 정정됨(원래 "2.1.1") |
 | MySQL | 8.4 LTS | 운영 대상. `ddl-auto=validate`, 스키마 변경은 Flyway로만 |
 | 빌드 | Maven | 설계안 확정 사항 |
+| springdoc-openapi | 2.8.6 | 2026-09-19 추가. Maven Central 실제 최신 안정판 확인 후 반영(2025-03 배포) |
 
 ## 로컬 실행
 
 1. `.env.example`을 참고해 로컬에 `.env` 또는 환경변수로 값 채우기 (그대로 `.env`를 커밋하지 말 것 — `.gitignore` 처리됨)
 2. MySQL 8.4(로컬 또는 Docker)에 `coffeul` 데이터베이스 생성
 3. `./mvnw spring-boot:run`
+4. API 문서: `http://localhost:8080/swagger-ui/index.html` (원본 JSON은 `/v3/api-docs`). 설정은 `common.config.OpenApiConfig`(제목 · 설명만, 나머지는 springdoc 기본값) — `common`이 `@ApplicationModule(OPEN)`이라 이 자리에 둠.
 
 ## 통합 테스트 (Testcontainers)
 
@@ -85,7 +87,7 @@ SOURCE db/seed/menu-seed.sql;
   - access 토큰은 JWT(HS256, 1시간), refresh 토큰은 JWT가 아닌 256비트 무작위 문자열 — DB엔 SHA-256 해시만 저장(`refresh_token` 테이블).
   - `auth`는 `member`·`store`를 직접 import하지 않는다 — `MemberCredentialPort`·`StaffCredentialPort`를 auth가 정의하고 각 모듈이 역방향으로 구현.
   - refresh 토큰 회전 + 재사용 감지(탈취 의심 시 같은 계열 전부 폐기, 단 폐기 후 30초 안이면 동시 요청으로 보고 새 쌍만 발급), 로그인 실패 잠금(고객 5회→15분 / 직원 5회째부터 30초 대기)까지 구현하고 통합 테스트로 검증.
-  - **알려진 한계**: 다른 컨트롤러(주문 등)에서 이 토큰을 실제로 검사하는 배선(`AuthUser` 인자 리졸버)은 아직 없음 — MS-22~26(주문 상태 전이) 만들 때 이어붙일 예정. `JWT_SECRET` 로컬 기본값은 개발 전용이라 운영에선 반드시 Secrets Manager 값으로 덮어써야 함.
+  - **알려진 한계**: 다른 컨트롤러(주문 등)에서 이 토큰을 실제로 검사하는 배선(`AuthUser` 인자 리졸버)은 아직 없음. ~~MS-22~26(주문 상태 전이) 만들 때 이어붙일 예정~~ → **2026-09-19, 성민 형 담당으로 재배정**(민섭 MS-22~26이 MS-27 선행 때문에 기약 없어서). `JWT_SECRET` 로컬 기본값은 개발 전용이라 운영에선 반드시 Secrets Manager 값으로 덮어써야 함.
 
 ## 기준 구현 (이메일 인증)
 
@@ -125,13 +127,26 @@ SOURCE db/seed/menu-seed.sql;
 - **SM-4 · SM-5 · SM-7은 아직 없다.** 셋 다 권한이 CUSTOMER인데 `auth.api.AuthUser`를 컨트롤러 인자로
   받을 리졸버가 아직 없어서다(민섭, MS-22~26과 함께 예정).
 
-## 현재 상태 (2026-09-18)
+## 기준 구현 (조회 포트 — order.api · store.api)
+
+성민 형의 SM-1~6(이메일 인증 · 회원가입 · 비번 재설정) 작업이 필요로 하는 두 조회 포트. 배선(컨트롤러)은 없고 다른 모듈이 부르는 포트만 존재한다.
+
+- **`order.api.OrderQueryApi#countActiveOrders(memberId)`** — SM-7(탈퇴) U005 판정용("진행 중인 주문이 있어 탈퇴할 수 없어요", `data.activeOrderCount`). 종료 상태(`COMPLETED`·`CANCELED`·`REJECTED`·`EXPIRED`) 4개를 제외한 나머지를 센다. MS-16의 `X-Member-Id` 헤더 stub과는 무관 — `Order`/`OrderRepository`가 이미 있어서 상태 전이(MS-22~26) 완성 여부와 별개로 바로 동작한다. 단 지금은 코드가 `PENDING_PAYMENT`만 실제로 쓰기 때문에, MS-22~26 전까진 "활성 주문 수"가 사실상 "전체 주문 수"와 같다.
+- **`store.api.SchoolQueryApi#findById(schoolId)`** → `SchoolView(id, name, campus, status)`. SM-3·SM-4 응답이 요구하는 `school.name`·`campus`용. `school` 테이블은 V1에 이미 있고(성민 형이 만들 `school-seed` 마이그레이션은 실제 을지대 데이터를 채우는 것), 학교를 별도 모듈로 빼지 않고 store 모듈에 편입했다.
+- 둘 다 `OrderQueryApiTest`·`SchoolQueryApiTest`(실제 MySQL 통합 테스트)로 검증.
+
+## API 문서 (springdoc)
+
+`springdoc-openapi-starter-webmvc-ui`로 컨트롤러에서 자동으로 OpenAPI 문서를 생성한다. 추가 애노테이션 없이 `@RestController`·`@RequestMapping` 그대로 반영됨 — 완료 기준의 "Swagger 응답 예시"는 이제 `/swagger-ui/index.html`에서 실제로 확인 가능하다. `OpenApiIntegrationTest`로 `/v3/api-docs`가 실제로 뜨고 컨트롤러 경로(`/api/v1/orders`)가 잡히는지 검증.
+
+## 현재 상태 (2026-09-19)
 
 - 프로젝트 세팅 + 공통 응답/에러 + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL + 기준 구현(메뉴 조회 · 주문 생성 · 인증) 완료.
 - Testcontainers로 실제 MySQL 8.4에 붙는 통합 테스트 추가: 주문 생성 → 주문·주문항목·옵션이 정확한 금액으로 저장되는지, 같은 Idempotency-Key 재요청이 중복 주문을 만들지 않는지, 품절 메뉴 주문이 아예 저장되지 않는지 확인. 메뉴 시드 SQL도 실제 컨테이너에서 돌려서 41개 메뉴·7개 카테고리·105개 옵션이 정확히 들어가는지 확인함. 이어서 로그인·토큰 재발급·로그아웃 흐름도 통합 테스트로 검증.
   - 이 과정에서 실제 MySQL로만 잡을 수 있던 버그를 여럿 고쳤다(H2·모킹으로는 안 잡힘):
     - JPA 엔티티 필드 타입이 DB 물리 타입과 다름 — `OptionGroup.minSelect/maxSelect`(TINYINT인데 int), `OrderLine.quantity`(SMALLINT인데 int), `Order.requestHash`(CHAR(64)인데 columnDefinition 없는 String → VARCHAR로 추론).
     - **로그인 실패 카운트·재사용 감지 시 계열 폐기가 트랜잭션 롤백에 같이 사라지는 버그** — `BusinessException`을 던지기 전에 DB에 기록한 내용이, 그 예외 때문에 트랜잭션 전체가 롤백되면서 함께 사라짐(Spring 기본은 RuntimeException에서 전체 롤백). `noRollbackFor = BusinessException.class`로 고침 — 안 고쳤으면 5회 실패 잠금과 토큰 탈취 감지가 둘 다 조용히 작동 안 했을 것.
-- `./mvnw test` 통과: ModularityTests(모듈 경계 12개 전부) + 도메인 단위 테스트 8개 + 통합 테스트 9개 = 19개 전부 그린.
+- **2026-09-19**: 성민 형의 SM-1~6 배선 요청 중 세 가지를 민섭이 맡아 완료 — `order.api.OrderQueryApi`(회원의 활성 주문 수, SM-7용), `store.api.SchoolQueryApi`(학교명 · 캠퍼스, SM-3 · SM-4용), springdoc(API 문서). 담당 조율 전체 내용은 옵시디언 `TEAM-Coffeul-스코프분배-설계.md` 2026-09-19 항목 참고. AuthUser 인자 리졸버는 성민 형 담당으로 넘어감.
+- `./mvnw test` 통과: ModularityTests(모듈 경계 검증) + 도메인 단위 테스트 8개 + 통합 테스트 16개(신규 7개 포함) = **26개 전부 그린**.
 - 로컬 실행 조건: Java 21, Docker(Colima 포함) — 자세한 건 위 "통합 테스트" 절 참고.
-- 다음: 주문 상태 전이(MS-22~26) — 단, MS-27(결제 승인)이 먼저 있어야 주문이 REQUESTED로 올라가고, MS-16도 결제 시도를 실제로 저장하도록 보강해야 함. 거절·취소는 환불 정책(Q2) 확정 전까지 보류. `school`·`merchant`·`store` 실데이터는 사장님 서류(Q3) 나오면.
+- 다음: 주문 상태 전이(MS-22~26) — 단, MS-27(결제 승인)이 먼저 있어야 주문이 REQUESTED로 올라가고, MS-16도 결제 시도를 실제로 저장하도록 보강해야 함. 거절·취소는 환불 정책(Q2) 확정 전까지 보류. `school`·`merchant`·`store` 실데이터는 사장님 서류(Q3) 나오면. AuthUser 인자 리졸버는 성민 형 브랜치 push 대기.

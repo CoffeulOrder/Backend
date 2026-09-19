@@ -11,6 +11,9 @@ import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.time.LocalDate;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 통합 테스트용 최소 데이터 시딩 헬퍼. 실제 사업자 정보(merchant)는 여전히 가짜 값이며,
@@ -21,6 +24,8 @@ public class TestFixtures {
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final JdbcTemplate jdbc;
+    // uk_orders_pickup_no(store_id, business_date, pickup_no) 충돌 방지 — 테스트마다 새 인스턴스라 1부터 시작해도 안전.
+    private final AtomicInteger pickupNoSequence = new AtomicInteger(1);
 
     public TestFixtures(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -182,6 +187,33 @@ public class TestFixtures {
     public int countOrdersByMember(long memberId) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `orders` WHERE `member_id` = ?", Integer.class, memberId);
         return count == null ? 0 : count;
+    }
+
+    /**
+     * 상태 전이(MS-22~26)를 거치지 않고 임의 상태의 주문 행을 직접 심는다. ck_orders_placed는
+     * PENDING_PAYMENT·EXPIRED가 아니면 placed_at·business_date·pickup_no를 요구하고,
+     * ck_orders_reject_reason은 REJECTED에 reject_reason_code를 요구해서 상태별로 채워 넣는다.
+     */
+    public long createOrder(long memberId, long storeId, long schoolId, String status) {
+        boolean placed = !"PENDING_PAYMENT".equals(status) && !"EXPIRED".equals(status);
+        String rejectReasonCode = "REJECTED".equals(status) ? "OTHER" : null;
+        Instant now = Instant.now();
+
+        return insert(
+                "INSERT INTO `orders` (`order_code`, `member_id`, `store_id`, `school_id`, `status`, " +
+                        "`business_date`, `pickup_no`, `subtotal_amount`, `discount_amount`, `total_amount`, " +
+                        "`reject_reason_code`, `withdrawal_limit_agreed_at`, `commission_rate_snapshot`, " +
+                        "`idempotency_key`, `request_hash`, `expires_at`, `placed_at`) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "CF-TEST-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                memberId, storeId, schoolId, status,
+                placed ? LocalDate.now() : null,
+                placed ? pickupNoSequence.getAndIncrement() : null,
+                4000, 0, 4000,
+                rejectReasonCode,
+                now, new BigDecimal("0.0300"),
+                UUID.randomUUID().toString(), "0".repeat(64), now.plusSeconds(1200),
+                placed ? now : null);
     }
 
     private long insert(String sql, Object... args) {
