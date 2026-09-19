@@ -184,6 +184,22 @@ public class TestFixtures {
                 optionGroupId, name, priceDelta, isDefault);
     }
 
+    /** SM-7 탈퇴가 푸시 토큰을 비활성으로 바꾸는지 보려고 심는 행. */
+    public long createDeviceToken(String ownerType, long ownerId) {
+        return insert(
+                "INSERT INTO `device_token` (`owner_type`, `owner_id`, `app_type`, `expo_push_token`, "
+                        + "`platform`, `is_active`, `last_registered_at`) VALUES (?, ?, ?, ?, ?, TRUE, ?)",
+                ownerType, ownerId, "CUSTOMER",
+                "ExponentPushToken[" + UUID.randomUUID() + "]", "IOS", Instant.now());
+    }
+
+    public int countActiveDeviceTokens(String ownerType, long ownerId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM `device_token` WHERE `owner_type` = ? AND `owner_id` = ? AND `is_active` = TRUE",
+                Integer.class, ownerType, ownerId);
+        return count == null ? 0 : count;
+    }
+
     public int countOrdersByMember(long memberId) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `orders` WHERE `member_id` = ?", Integer.class, memberId);
         return count == null ? 0 : count;

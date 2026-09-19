@@ -111,11 +111,10 @@ SOURCE db/seed/menu-seed.sql;
   - 비밀번호는 8자 이상 **72바이트 이하** + 영문·숫자 (REQ-U-002). 72바이트는 BCrypt가 그 뒤를 잘라내기 때문 —
     넘겨서 저장하면 사용자가 입력한 것과 실제 검사되는 것이 달라진다.
   - 토큰 발급은 `auth.api.TokenIssuer`로만 한다 — member는 JWT를 모른다.
-  - **임시 처리**: 응답의 `school.name`·`campus`는 `SchoolLookupPort` 뒤의
-    `TemporarySchoolLookupAdapter`(JdbcTemplate 읽기 한 줄)가 채운다.
-    `school` 테이블의 주인 모듈이 아직 없어서인데(학교·사장님·매장 뼈대는 민섭 담당),
-    정해지면 **이 어댑터만** store.api 호출로 바꾸면 되고 서비스·응답은 그대로다.
-    일부러 JPA 엔티티로 매핑하지 않았다 — 매핑하면 member가 남의 테이블을 소유하는 모양이 된다.
+  - 응답의 `school.name`·`campus`는 `SchoolLookupPort` 뒤에서 채운다. **2026-09-19에 예고대로 교체 완료** —
+    민섭이 `store.api.SchoolQueryApi`를 열면서, JdbcTemplate로 직접 읽던 `TemporarySchoolLookupAdapter`를
+    `StoreSchoolLookupAdapter`(store.api 위임)로 바꿨다. 포트·서비스·응답은 한 줄도 안 바뀌었다 —
+    임시 어댑터를 일부러 JPA 엔티티로 매핑하지 않았던 게 여기서 값을 했다.
 
 - **SM-6** (`POST /members/password-reset`) — REQ-U-006. PASSWORD_RESET 인증 토큰으로 새 비밀번호 설정.
   - 성공하면 그 회원의 **refresh 토큰을 전부 폐기**하고 **로그인 잠금도 푼다**.
@@ -124,9 +123,25 @@ SOURCE db/seed/menu-seed.sql;
   - 이를 위해 `auth.api.RefreshTokenRevoker`를 새로 열었다 (refresh_token을 다루는 코드는 auth 뒤에만 둔다).
   - 비밀번호 규칙 검사를 토큰 소비보다 **먼저** 한다 — 오타 하나로 인증 토큰이 타버리면 메일부터 다시 받아야 한다.
 
-- **SM-4 · SM-5 · SM-7은 아직 없다.** 셋을 막고 있던 `AuthUser` 인자 리졸버는 아래 절에서 만들었으니,
-  이제 남은 건 컨트롤러 배선뿐이다. SM-7(탈퇴)은 `order.api.OrderQueryApi#countActiveOrders`로 U005를
-  판정하고, SM-4(내 정보)는 `store.api.SchoolQueryApi`로 학교명 · 캠퍼스를 채운다 — 둘 다 민섭이 먼저 넣어뒀다.
+- **SM-4** (`GET /members/me`) — REQ-U-004. 이름 · 이메일 · 학교 · 가입일.
+  - `createdAt`은 DB에 UTC로 들어 있고 명세 예시는 `+09:00`이라 **영업 시간대(`coffeul.business-zone`)로 변환**해서 내보낸다. 서버 시간대에 흔들리지 않게 하려는 것.
+  - 학교 행을 못 찾아도 500으로 터뜨리지 않고 이름·캠퍼스를 빈 값으로 내려보낸다 — 내 정보 화면이 학교 때문에 통째로 실패하면 안 된다.
+
+- **SM-5** (`PATCH /members/me/password`) — REQ-U-005. 현재 비밀번호 확인 후 변경.
+  - 성공하면 **refresh 토큰을 전부 폐기**한다. 비밀번호를 바꾸는 이유가 "남이 내 계정을 쓰고 있다"인 경우가 많아서, 기존 세션을 두면 침입자가 그대로 로그인 상태로 남는다. 성공 메시지가 "다시 로그인해주세요"인 이유다.
+  - 검사 순서는 현재 비밀번호(U004) → 새 비밀번호 규칙(U002). SM-6과 달리 **소비되는 인증 토큰이 없어서** 순서를 뒤집을 이유가 없다.
+
+- **SM-7** (`DELETE /members/me`) — REQ-U-007. 비밀번호 확인 후 탈퇴.
+  - 진행 중 주문이 있으면 **U005 + `data.activeOrderCount`**로 막는다. 돈이 걸린 주문을 두고 계정을 비우면 환불 · 픽업 연락이 갈 곳이 없어진다.
+  - 개인정보만 지우고 **행은 남긴다**: `email`·`password_hash` → NULL, `name` → '탈퇴회원', `status` → WITHDRAWN, `withdrawn_at` 기록. 주문 · 결제가 `member_id`로 이 행을 가리키고 전자상거래법 시행령 제6조가 5년 보존을 요구해서, 행을 지우면 그 기록이 끊긴다.
+  - `email`을 NULL로 두므로 `uk_member_email`에 걸리지 않아 **같은 이메일로 재가입이 된다** (통합 테스트로 확인).
+  - 개인정보 삭제 · refresh 폐기 · 푸시 토큰 비활성이 **한 트랜잭션**이다 (명세: "한 번에"). 계정은 사라졌는데 푸시는 계속 가는 중간 상태를 만들지 않는다.
+
+- **세 API 공통 — 주체 종류를 확인한다.** 권한이 CUSTOMER라서 컨트롤러가 `AuthUser.type`이 MEMBER인지 먼저 본다(아니면 **C003**). 직원 토큰의 `sub`는 `staff_account.id`인데 그대로 쓰면 같은 숫자의 `member.id`를 남의 정보로 읽거나 **탈퇴시켜 버린다.** 리졸버는 토큰을 복원만 하고 권한은 보지 않으므로 이 확인은 각 API의 몫이다.
+- **세 API 공통 — 탈퇴 · 정지 계정은 C002.** access 토큰은 폐기해도 최대 1시간 살아 있다(REQ-AUTH-012). 명세가 이 API들의 인증 실패를 C002 하나로 정의해 둬서 같은 코드로 막는다.
+
+- **`member` ↔ `order` 순환 의존을 역방향 포트로 끊었다.** SM-7은 진행 중 주문 수가 필요한데, `order`가 이미 주문 생성(MS-16)에서 `member.api.MemberStatusApi`를 부르고 있어서 member가 `order.api`를 직접 부르면 **Modulith가 빌드를 깬다**(실제로 깨졌다). 그래서 `member.api.ActiveOrderCountPort`를 member가 정의하고 `order.infrastructure.ActiveOrderCountAdapter`가 구현한다 — verification이 `MemberAccountPort`를 정의하고 member가 구현하는 것과 같은 방식이다. "진행 중"의 정의는 주문 모듈 지식이라 어댑터가 민섭의 `OrderQueryApi#countActiveOrders`에 그대로 위임한다(종료 상태 목록을 두 군데 두면 탈퇴 판정만 조용히 어긋난다).
+- **푸시 토큰 비활성은 임시 어댑터다.** `device_token`의 주인 모듈(notification, 태완 형)이 아직 없어서 `PushTokenDeactivationPort` 뒤에 JdbcTemplate 어댑터를 뒀다. 모듈이 생기면 **어댑터만** notification.api 호출로 바꾼다 — 학교 조회가 걸어간 길과 같다.
 
 ## 기준 구현 (AuthUser 인자 리졸버)
 
@@ -161,6 +176,6 @@ SOURCE db/seed/menu-seed.sql;
     - JPA 엔티티 필드 타입이 DB 물리 타입과 다름 — `OptionGroup.minSelect/maxSelect`(TINYINT인데 int), `OrderLine.quantity`(SMALLINT인데 int), `Order.requestHash`(CHAR(64)인데 columnDefinition 없는 String → VARCHAR로 추론).
     - **로그인 실패 카운트·재사용 감지 시 계열 폐기가 트랜잭션 롤백에 같이 사라지는 버그** — `BusinessException`을 던지기 전에 DB에 기록한 내용이, 그 예외 때문에 트랜잭션 전체가 롤백되면서 함께 사라짐(Spring 기본은 RuntimeException에서 전체 롤백). `noRollbackFor = BusinessException.class`로 고침 — 안 고쳤으면 5회 실패 잠금과 토큰 탈취 감지가 둘 다 조용히 작동 안 했을 것.
 - **2026-09-19**: 성민 형의 SM-1~6 배선 요청 중 세 가지를 민섭이 맡아 완료 — `order.api.OrderQueryApi`(회원의 활성 주문 수, SM-7용), `store.api.SchoolQueryApi`(학교명 · 캠퍼스, SM-3 · SM-4용), springdoc(API 문서). 담당 조율 전체 내용은 옵시디언 `TEAM-Coffeul-스코프분배-설계.md` 2026-09-19 항목 참고. AuthUser 인자 리졸버는 성민 형 담당으로 넘어감.
-- `./mvnw test` 통과: ModularityTests(모듈 경계 검증) 포함 **85개 전부 그린** (2026-09-19, main 머지 + AuthUser 리졸버 11건 추가 후 실측).
+- `./mvnw test` 통과: ModularityTests(모듈 경계 검증) 포함 **97개 전부 그린** (2026-09-19, AuthUser 리졸버 + SM-4 · 5 · 7까지 실측).
 - 로컬 실행 조건: Java 21, Docker(Colima 포함) — 자세한 건 위 "통합 테스트" 절 참고.
 - 다음: 주문 상태 전이(MS-22~26) — 단, MS-27(결제 승인)이 먼저 있어야 주문이 REQUESTED로 올라가고, MS-16도 결제 시도를 실제로 저장하도록 보강해야 함. 거절·취소는 환불 정책(Q2) 확정 전까지 보류. `school`·`merchant`·`store` 실데이터는 사장님 서류(Q3) 나오면. AuthUser 인자 리졸버는 성민 형 브랜치 push 대기.
