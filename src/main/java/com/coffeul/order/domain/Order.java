@@ -16,6 +16,10 @@ import java.time.Instant;
 public class Order {
 
     public static final String STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
+    public static final String STATUS_COMPLETED = "COMPLETED";
+    public static final String STATUS_CANCELED = "CANCELED";
+    public static final String STATUS_REJECTED = "REJECTED";
+    public static final String STATUS_EXPIRED = "EXPIRED";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
