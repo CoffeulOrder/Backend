@@ -87,7 +87,7 @@ SOURCE db/seed/menu-seed.sql;
   - access 토큰은 JWT(HS256, 1시간), refresh 토큰은 JWT가 아닌 256비트 무작위 문자열 — DB엔 SHA-256 해시만 저장(`refresh_token` 테이블).
   - `auth`는 `member`·`store`를 직접 import하지 않는다 — `MemberCredentialPort`·`StaffCredentialPort`를 auth가 정의하고 각 모듈이 역방향으로 구현.
   - refresh 토큰 회전 + 재사용 감지(탈취 의심 시 같은 계열 전부 폐기, 단 폐기 후 30초 안이면 동시 요청으로 보고 새 쌍만 발급), 로그인 실패 잠금(고객 5회→15분 / 직원 5회째부터 30초 대기)까지 구현하고 통합 테스트로 검증.
-  - **알려진 한계**: 다른 컨트롤러(주문 등)에서 이 토큰을 실제로 검사하는 배선(`AuthUser` 인자 리졸버)은 아직 없음. ~~MS-22~26(주문 상태 전이) 만들 때 이어붙일 예정~~ → **2026-09-19, 성민 형 담당으로 재배정**(민섭 MS-22~26이 MS-27 선행 때문에 기약 없어서). `JWT_SECRET` 로컬 기본값은 개발 전용이라 운영에선 반드시 Secrets Manager 값으로 덮어써야 함.
+  - 토큰을 컨트롤러에서 실제로 받는 배선(`AuthUser` 인자 리졸버)은 아래 "기준 구현 (AuthUser 인자 리졸버)" 절에 있다. `JWT_SECRET` 로컬 기본값은 개발 전용이라 운영에선 반드시 Secrets Manager 값으로 덮어써야 함.
 
 ## 기준 구현 (이메일 인증)
 
@@ -124,8 +124,22 @@ SOURCE db/seed/menu-seed.sql;
   - 이를 위해 `auth.api.RefreshTokenRevoker`를 새로 열었다 (refresh_token을 다루는 코드는 auth 뒤에만 둔다).
   - 비밀번호 규칙 검사를 토큰 소비보다 **먼저** 한다 — 오타 하나로 인증 토큰이 타버리면 메일부터 다시 받아야 한다.
 
-- **SM-4 · SM-5 · SM-7은 아직 없다.** 셋 다 권한이 CUSTOMER인데 `auth.api.AuthUser`를 컨트롤러 인자로
-  받을 리졸버가 아직 없어서다(민섭, MS-22~26과 함께 예정).
+- **SM-4 · SM-5 · SM-7은 아직 없다.** 셋을 막고 있던 `AuthUser` 인자 리졸버는 아래 절에서 만들었으니,
+  이제 남은 건 컨트롤러 배선뿐이다. SM-7(탈퇴)은 `order.api.OrderQueryApi#countActiveOrders`로 U005를
+  판정하고, SM-4(내 정보)는 `store.api.SchoolQueryApi`로 학교명 · 캠퍼스를 채운다 — 둘 다 민섭이 먼저 넣어뒀다.
+
+## 기준 구현 (AuthUser 인자 리졸버)
+
+`auth.infrastructure.security.AuthUserArgumentResolver` — 컨트롤러가 인자에 `auth.api.AuthUser`를 적기만 하면 Authorization 헤더의 access 토큰에서 채워진다. 원래 민섭 담당이었는데 MS-22~26이 MS-27(결제 승인) 선행 때문에 밀려서 2026-09-19에 성민이 맡았다.
+
+- **애노테이션을 만들지 않았다.** `@LoginUser` 같은 걸 두지 않고 타입으로만 판별한다 — 스펙이 "컨트롤러는 `AuthUser`만 받는다"고 정했으므로 다른 모듈이 추가로 알아야 할 것을 늘리지 않는다. 커스텀 리졸버는 애노테이션 없는 객체를 전부 받아버리는 ModelAttribute 리졸버보다 앞에서 호출되므로 요청 파라미터 바인딩으로 흘러가지 않는다.
+- 파싱은 이 클래스 하나에만 있다 (스펙: "토큰 파싱 코드를 각 모듈에 두지 않는다"). 실제 검증·복원은 기존 `JwtAccessTokenService#decode`를 그대로 쓴다 — 새로 만든 건 헤더에서 토큰을 꺼내 MVC에 꽂는 부분뿐이다.
+- 헤더 없음 · `Bearer` 아닌 스킴 · 토큰 자리 공백 · 서명 불일치 · 만료 → 전부 **C002(401)**. 스킴은 RFC 6750대로 대소문자를 구분하지 않는다(`bearer`도 받는다).
+- **계정 상태(탈퇴 · 정지)는 여기서 확인하지 않는다.** REQ-AUTH-012는 주문 생성 · 결제 승인 · 매장용 API가 각자 DB에서 확인하도록 정했고, auth가 그걸 하려면 다른 모듈을 import해야 해서 모듈 경계(REQ-AUTH-011)가 깨진다.
+- **MS-27과 함께 들어올 `JwtFilter` · `SecurityConfig`와 충돌하지 않는다.** 지금은 Spring Security 스타터가 없어서(pom에 `spring-security-crypto`만 있다) 리졸버가 직접 헤더를 읽는다. 필터가 앞단에서 검증하게 되면 리졸버 구현만 "필터가 넣어둔 값을 꺼내기"로 바꾸면 되고, 컨트롤러 시그니처는 그대로다.
+- `AuthController#logout`은 아직 헤더를 직접 파싱한다 — auth 모듈 주인(민섭)의 파일이라 건드리지 않았다. 인자를 `AuthUser`로 바꾸고 `bearerToken` 메서드를 지우면 되는 한 줄짜리 정리다.
+- 검증: `AuthUserArgumentResolverTest`(단위 9건 — 클레임 복원, 스킴 대소문자, 401 다섯 경로) + `AuthUserResolverWiringTest`(실제 컨텍스트에서 MVC 등록 여부 + **순서** 2건).
+- **테스트 전용 컨트롤러를 띄우지 않았다** (다음 사람이 같은 함정에 빠지지 않도록 남김). 테스트 소스도 `com.coffeul` 아래라 `@RestController`를 붙이면 컴포넌트 스캔에 걸려서, `@Bean` 등록과 겹치면 "Ambiguous mapping"으로 컨텍스트가 죽고 스캔만 두면 그 엔드포인트가 **모든** 통합 테스트 컨텍스트와 springdoc 문서에 딸려 붙는다. `@RequestMapping`만 붙이는 우회는 핸들러로 등록되지 않아 404(정적 리소스)로 빠진다. 그래서 엔드포인트 대신 `RequestMappingHandlerAdapter`의 리졸버 목록을 직접 검사한다 — 공유 컨텍스트를 그대로 써서 빠르기도 하다.
 
 ## 기준 구현 (조회 포트 — order.api · store.api)
 
@@ -147,6 +161,6 @@ SOURCE db/seed/menu-seed.sql;
     - JPA 엔티티 필드 타입이 DB 물리 타입과 다름 — `OptionGroup.minSelect/maxSelect`(TINYINT인데 int), `OrderLine.quantity`(SMALLINT인데 int), `Order.requestHash`(CHAR(64)인데 columnDefinition 없는 String → VARCHAR로 추론).
     - **로그인 실패 카운트·재사용 감지 시 계열 폐기가 트랜잭션 롤백에 같이 사라지는 버그** — `BusinessException`을 던지기 전에 DB에 기록한 내용이, 그 예외 때문에 트랜잭션 전체가 롤백되면서 함께 사라짐(Spring 기본은 RuntimeException에서 전체 롤백). `noRollbackFor = BusinessException.class`로 고침 — 안 고쳤으면 5회 실패 잠금과 토큰 탈취 감지가 둘 다 조용히 작동 안 했을 것.
 - **2026-09-19**: 성민 형의 SM-1~6 배선 요청 중 세 가지를 민섭이 맡아 완료 — `order.api.OrderQueryApi`(회원의 활성 주문 수, SM-7용), `store.api.SchoolQueryApi`(학교명 · 캠퍼스, SM-3 · SM-4용), springdoc(API 문서). 담당 조율 전체 내용은 옵시디언 `TEAM-Coffeul-스코프분배-설계.md` 2026-09-19 항목 참고. AuthUser 인자 리졸버는 성민 형 담당으로 넘어감.
-- `./mvnw test` 통과: ModularityTests(모듈 경계 검증) + 도메인 단위 테스트 8개 + 통합 테스트 16개(신규 7개 포함) = **26개 전부 그린**.
+- `./mvnw test` 통과: ModularityTests(모듈 경계 검증) 포함 **85개 전부 그린** (2026-09-19, main 머지 + AuthUser 리졸버 11건 추가 후 실측).
 - 로컬 실행 조건: Java 21, Docker(Colima 포함) — 자세한 건 위 "통합 테스트" 절 참고.
 - 다음: 주문 상태 전이(MS-22~26) — 단, MS-27(결제 승인)이 먼저 있어야 주문이 REQUESTED로 올라가고, MS-16도 결제 시도를 실제로 저장하도록 보강해야 함. 거절·취소는 환불 정책(Q2) 확정 전까지 보류. `school`·`merchant`·`store` 실데이터는 사장님 서류(Q3) 나오면. AuthUser 인자 리졸버는 성민 형 브랜치 push 대기.
