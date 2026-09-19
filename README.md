@@ -94,8 +94,13 @@ SOURCE db/seed/menu-seed.sql;
 - **SM-1 · SM-2** (`POST /verifications/email`, `/verifications/email/confirm`) — verification 모듈, REQ-EV-001~007 그대로.
   - 6자리 코드는 5분, 확인 성공 시 받는 인증 토큰(`evt_...`)은 30분. **둘 다 DB엔 SHA-256 해시만 남는다.**
   - 재발송 제한 60초(EV002) · 하루 10회(EV003, Asia/Seoul 자정 기준) · 확인 5회 실패 시 코드 폐기(EV005).
-  - 메일은 `VerificationMailSender` 포트 뒤에 있고 지금은 **로그 어댑터**만 있다(`MAIL_PROVIDER=log`).
-    로컬에서 인증코드는 서버 로그의 `[가짜 메일]` 줄에서 본다. SES 어댑터는 발신 도메인 확보 + 샌드박스 해제 후.
+  - 메일은 `VerificationMailSender` 포트 뒤에 있고 **어댑터가 둘**이다 — `log`(기본)와 `ses`. `MAIL_PROVIDER`로 고른다.
+    로컬에서 인증코드는 서버 로그의 `[가짜 메일]` 줄에서 본다.
+  - **SES 어댑터는 있지만 켜지 마라.** 샌드박스 상태에서는 검증된 주소로만 발송돼서, 해제 전에 `MAIL_PROVIDER=ses`로
+    올리면 실제 학생 메일이 전부 EV007로 막히고 **가입 자체가 막힌다.** 발신 도메인 SPF·DKIM + 샌드박스 해제가
+    끝난 뒤에 전환한다. 자격 증명은 기본 제공자 체인(EC2 IAM 역할)에 맡기고 액세스 키를 설정에 두지 않는다.
+    본문은 HTML 없이 텍스트로만 보낸다 — 코드 한 줄이라 HTML이 얻는 게 없고, 학교 메일함(Google Workspace)에서
+    스팸으로 가면 서비스가 통째로 막힌다.
   - `verification`은 `member`를 import하지 않는다 — 가입 여부 확인은 verification이 `MemberAccountPort`를 정의하고
     member가 역방향으로 구현한다(그러지 않으면 SM-3에서 순환 의존).
   - 인증코드 정리 스케줄(매일 04:00 KST, 만료 후 7일 지난 행 삭제)까지 포함.
