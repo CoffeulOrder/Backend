@@ -19,12 +19,14 @@
 | Spring Modulith | 1.4.1 | 설계안 ver 0.7.1에서 정정됨(원래 "2.1.1") |
 | MySQL | 8.4 LTS | 운영 대상. `ddl-auto=validate`, 스키마 변경은 Flyway로만 |
 | 빌드 | Maven | 설계안 확정 사항 |
+| springdoc-openapi | 2.8.6 | 2026-09-19 추가. Maven Central 실제 최신 안정판 확인 후 반영(2025-03 배포) |
 
 ## 로컬 실행
 
 1. `.env.example`을 참고해 로컬에 `.env` 또는 환경변수로 값 채우기 (그대로 `.env`를 커밋하지 말 것 — `.gitignore` 처리됨)
 2. MySQL 8.4(로컬 또는 Docker)에 `coffeul` 데이터베이스 생성
 3. `./mvnw spring-boot:run`
+4. API 문서: `http://localhost:8080/swagger-ui/index.html` (원본 JSON은 `/v3/api-docs`). 설정은 `common.config.OpenApiConfig`(제목 · 설명만, 나머지는 springdoc 기본값) — `common`이 `@ApplicationModule(OPEN)`이라 이 자리에 둠.
 
 ## 통합 테스트 (Testcontainers)
 
@@ -84,6 +86,10 @@ SOURCE db/seed/menu-seed.sql;
 - **`store.api.SchoolQueryApi#findById(schoolId)`** → `SchoolView(id, name, campus, status)`. SM-3·SM-4 응답이 요구하는 `school.name`·`campus`용. `school` 테이블은 V1에 이미 있고(성민 형이 만들 `school-seed` 마이그레이션은 실제 을지대 데이터를 채우는 것), 학교를 별도 모듈로 빼지 않고 store 모듈에 편입했다.
 - 둘 다 `OrderQueryApiTest`·`SchoolQueryApiTest`(실제 MySQL 통합 테스트)로 검증.
 
+## API 문서 (springdoc)
+
+`springdoc-openapi-starter-webmvc-ui`로 컨트롤러에서 자동으로 OpenAPI 문서를 생성한다. 추가 애노테이션 없이 `@RestController`·`@RequestMapping` 그대로 반영됨 — 완료 기준의 "Swagger 응답 예시"는 이제 `/swagger-ui/index.html`에서 실제로 확인 가능하다. `OpenApiIntegrationTest`로 `/v3/api-docs`가 실제로 뜨고 컨트롤러 경로(`/api/v1/orders`)가 잡히는지 검증.
+
 ## 현재 상태 (2026-09-19)
 
 - 프로젝트 세팅 + 공통 응답/에러 + Flyway V1(`schema.sql`, 51/51 검증됨) + 메뉴 시드 SQL + 기준 구현(메뉴 조회 · 주문 생성 · 인증) 완료.
@@ -91,7 +97,7 @@ SOURCE db/seed/menu-seed.sql;
   - 이 과정에서 실제 MySQL로만 잡을 수 있던 버그를 여럿 고쳤다(H2·모킹으로는 안 잡힘):
     - JPA 엔티티 필드 타입이 DB 물리 타입과 다름 — `OptionGroup.minSelect/maxSelect`(TINYINT인데 int), `OrderLine.quantity`(SMALLINT인데 int), `Order.requestHash`(CHAR(64)인데 columnDefinition 없는 String → VARCHAR로 추론).
     - **로그인 실패 카운트·재사용 감지 시 계열 폐기가 트랜잭션 롤백에 같이 사라지는 버그** — `BusinessException`을 던지기 전에 DB에 기록한 내용이, 그 예외 때문에 트랜잭션 전체가 롤백되면서 함께 사라짐(Spring 기본은 RuntimeException에서 전체 롤백). `noRollbackFor = BusinessException.class`로 고침 — 안 고쳤으면 5회 실패 잠금과 토큰 탈취 감지가 둘 다 조용히 작동 안 했을 것.
-- **2026-09-19**: 성민 형의 SM-1~6 배선 요청 중 두 가지를 민섭이 맡아 완료 — `order.api.OrderQueryApi`(회원의 활성 주문 수, SM-7용), `store.api.SchoolQueryApi`(학교명 · 캠퍼스, SM-3 · SM-4용). 담당 조율 전체 내용은 옵시디언 `TEAM-Coffeul-스코프분배-설계.md` 2026-09-19 항목 참고. AuthUser 인자 리졸버는 성민 형 담당으로 넘어감.
-- `./mvnw test` 통과: ModularityTests(모듈 경계 검증) + 도메인 단위 테스트 8개 + 통합 테스트 14개(신규 5개 포함) = **24개 전부 그린**.
+- **2026-09-19**: 성민 형의 SM-1~6 배선 요청 중 세 가지를 민섭이 맡아 완료 — `order.api.OrderQueryApi`(회원의 활성 주문 수, SM-7용), `store.api.SchoolQueryApi`(학교명 · 캠퍼스, SM-3 · SM-4용), springdoc(API 문서). 담당 조율 전체 내용은 옵시디언 `TEAM-Coffeul-스코프분배-설계.md` 2026-09-19 항목 참고. AuthUser 인자 리졸버는 성민 형 담당으로 넘어감.
+- `./mvnw test` 통과: ModularityTests(모듈 경계 검증) + 도메인 단위 테스트 8개 + 통합 테스트 16개(신규 7개 포함) = **26개 전부 그린**.
 - 로컬 실행 조건: Java 21, Docker(Colima 포함) — 자세한 건 위 "통합 테스트" 절 참고.
 - 다음: 주문 상태 전이(MS-22~26) — 단, MS-27(결제 승인)이 먼저 있어야 주문이 REQUESTED로 올라가고, MS-16도 결제 시도를 실제로 저장하도록 보강해야 함. 거절·취소는 환불 정책(Q2) 확정 전까지 보류. `school`·`merchant`·`store` 실데이터는 사장님 서류(Q3) 나오면. AuthUser 인자 리졸버는 성민 형 브랜치 push 대기.
