@@ -42,6 +42,13 @@ public class Member {
     @Column(name = "last_login_at")
     private Instant lastLoginAt;
 
+    @Column(name = "withdrawn_at")
+    private Instant withdrawnAt;
+
+    // DB 기본값(CURRENT_TIMESTAMP(6))이 채운다. SM-4 응답의 createdAt용으로 읽기만 한다.
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private Instant createdAt;
+
     protected Member() {
     }
 
@@ -104,6 +111,29 @@ public class Member {
      */
     public void changePassword(String newPasswordHash) {
         this.passwordHash = newPasswordHash;
+        this.failedLoginCount = 0;
+        this.lockedUntil = null;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    public Instant getWithdrawnAt() {
+        return withdrawnAt;
+    }
+
+    /**
+     * SM-7 탈퇴 (REQ-U-007). 개인정보만 지우고 행은 남긴다 — 주문 · 결제 기록이 member_id로 이 행을 가리키고
+     * 전자상거래법 시행령 제6조가 계약 · 대금결제 기록을 5년 보존하도록 정하고 있어서, 행을 지우면 그 기록이
+     * 끊긴다. email을 NULL로 두면 uk_member_email에 걸리지 않으므로 같은 이메일로 다시 가입할 수 있다.
+     */
+    public void withdraw(Instant now) {
+        this.email = null;
+        this.passwordHash = null;
+        this.name = "탈퇴회원";
+        this.status = "WITHDRAWN";
+        this.withdrawnAt = now;
         this.failedLoginCount = 0;
         this.lockedUntil = null;
     }
