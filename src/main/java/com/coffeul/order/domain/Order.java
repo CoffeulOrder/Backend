@@ -9,6 +9,7 @@ import jakarta.persistence.Table;
 
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.LocalDate;
 
 /** schema.sql `orders` 테이블 매핑. 상태 전이(MS-22~26·만료 작업)는 {@link #accept}류 메서드에만 둔다 — rules.py ORDER_RULES. */
 @Entity
@@ -71,8 +72,14 @@ public class Order {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    @Column(name = "business_date")
+    private LocalDate businessDate;
+
     @Column(name = "pickup_no")
     private Short pickupNo;
+
+    @Column(name = "placed_at")
+    private Instant placedAt;
 
     @Column(name = "accepted_at")
     private Instant acceptedAt;
@@ -133,8 +140,20 @@ public class Order {
         return status;
     }
 
+    public LocalDate getBusinessDate() {
+        return businessDate;
+    }
+
     public Short getPickupNo() {
         return pickupNo;
+    }
+
+    public Instant getPlacedAt() {
+        return placedAt;
+    }
+
+    public String getRequestMemo() {
+        return requestMemo;
     }
 
     public Instant getAcceptedAt() {

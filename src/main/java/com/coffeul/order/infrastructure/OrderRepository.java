@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -30,4 +31,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByIdForUpdate(@Param("id") Long id);
 
     List<Order> findTop100ByStatusAndExpiresAtLessThan(String status, Instant threshold);
+
+    /** MS-20: 접수 ~ 픽업 대기 주문을 접수순으로. */
+    List<Order> findByStoreIdAndStatusInOrderByPlacedAtAsc(Long storeId, Collection<String> statuses);
+
+    /** MS-21: 영업일 하루치 전체 주문. */
+    List<Order> findByStoreIdAndBusinessDate(Long storeId, LocalDate businessDate);
 }

@@ -237,6 +237,20 @@ public class TestFixtures {
         jdbc.update("UPDATE `orders` SET `expires_at` = ? WHERE `id` = ?", expiresAt, orderId);
     }
 
+    /**
+     * MS-16(주문 생성) API로 실제 order_line · order_line_option까지 만든 주문을, 상태 전이(MS-22~26)
+     * 없이 원하는 상태로 바로 승격시킨다. createOrder와 같은 규칙(ck_orders_placed · ck_orders_reject_reason)을 따른다.
+     */
+    public void promoteOrderStatus(long orderId, String status) {
+        boolean placed = !"PENDING_PAYMENT".equals(status) && !"EXPIRED".equals(status);
+        String rejectReasonCode = "REJECTED".equals(status) ? "OTHER" : null;
+        Instant now = Instant.now();
+        jdbc.update("UPDATE `orders` SET `status` = ?, `business_date` = ?, `pickup_no` = ?, `placed_at` = ?, " +
+                        "`reject_reason_code` = ? WHERE `id` = ?",
+                status, placed ? LocalDate.now() : null, placed ? pickupNoSequence.getAndIncrement() : null,
+                placed ? now : null, rejectReasonCode, orderId);
+    }
+
     private long insert(String sql, Object... args) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
