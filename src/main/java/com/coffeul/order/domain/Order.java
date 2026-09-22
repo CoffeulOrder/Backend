@@ -10,12 +10,16 @@ import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.Instant;
 
-/** schema.sql `orders` 테이블 매핑 (기준 구현 범위 — 생성까지만, 상태 전이는 다음 단계). */
+/** schema.sql `orders` 테이블 매핑. 상태 전이(MS-22~26·만료 작업)는 {@link #accept}류 메서드에만 둔다 — rules.py ORDER_RULES. */
 @Entity
 @Table(name = "orders")
 public class Order {
 
     public static final String STATUS_PENDING_PAYMENT = "PENDING_PAYMENT";
+    public static final String STATUS_REQUESTED = "REQUESTED";
+    public static final String STATUS_ACCEPTED = "ACCEPTED";
+    public static final String STATUS_MAKING = "MAKING";
+    public static final String STATUS_READY = "READY";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_CANCELED = "CANCELED";
     public static final String STATUS_REJECTED = "REJECTED";
@@ -67,6 +71,24 @@ public class Order {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    @Column(name = "pickup_no")
+    private Short pickupNo;
+
+    @Column(name = "accepted_at")
+    private Instant acceptedAt;
+
+    @Column(name = "making_at")
+    private Instant makingAt;
+
+    @Column(name = "ready_at")
+    private Instant readyAt;
+
+    @Column(name = "completed_at")
+    private Instant completedAt;
+
+    @Column(name = "expired_at")
+    private Instant expiredAt;
+
     protected Order() {
     }
 
@@ -103,8 +125,36 @@ public class Order {
         return memberId;
     }
 
+    public Long getStoreId() {
+        return storeId;
+    }
+
     public String getStatus() {
         return status;
+    }
+
+    public Short getPickupNo() {
+        return pickupNo;
+    }
+
+    public Instant getAcceptedAt() {
+        return acceptedAt;
+    }
+
+    public Instant getMakingAt() {
+        return makingAt;
+    }
+
+    public Instant getReadyAt() {
+        return readyAt;
+    }
+
+    public Instant getCompletedAt() {
+        return completedAt;
+    }
+
+    public Instant getExpiredAt() {
+        return expiredAt;
     }
 
     public int getSubtotalAmount() {
@@ -129,5 +179,46 @@ public class Order {
 
     public Instant getExpiresAt() {
         return expiresAt;
+    }
+
+    /** MS-22 수락: REQUESTED → ACCEPTED. */
+    public void accept(Instant now) {
+        requireStatus(STATUS_REQUESTED);
+        status = STATUS_ACCEPTED;
+        acceptedAt = now;
+    }
+
+    /** MS-24 제조 시작: ACCEPTED → MAKING. */
+    public void startMaking(Instant now) {
+        requireStatus(STATUS_ACCEPTED);
+        status = STATUS_MAKING;
+        makingAt = now;
+    }
+
+    /** MS-25 픽업 대기: MAKING → READY. */
+    public void markReady(Instant now) {
+        requireStatus(STATUS_MAKING);
+        status = STATUS_READY;
+        readyAt = now;
+    }
+
+    /** MS-26 픽업 완료: READY → COMPLETED. */
+    public void complete(Instant now) {
+        requireStatus(STATUS_READY);
+        status = STATUS_COMPLETED;
+        completedAt = now;
+    }
+
+    /** 결제 대기 만료 작업: PENDING_PAYMENT → EXPIRED. */
+    public void expire(Instant now) {
+        requireStatus(STATUS_PENDING_PAYMENT);
+        status = STATUS_EXPIRED;
+        expiredAt = now;
+    }
+
+    private void requireStatus(String expected) {
+        if (!expected.equals(status)) {
+            throw new InvalidOrderTransitionException(status);
+        }
     }
 }

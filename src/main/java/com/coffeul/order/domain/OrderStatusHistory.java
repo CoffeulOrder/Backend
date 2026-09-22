@@ -47,7 +47,32 @@ public class OrderStatusHistory {
         return history;
     }
 
+    /** MS-22~26·만료 작업 공통 — actorType은 "STAFF" 또는 "SYSTEM" (schema.sql ck_order_status_history_actor). */
+    public static OrderStatusHistory transitioned(Long orderId, String fromStatus, String toStatus,
+                                                    String actorType, Long actorId, String reason) {
+        OrderStatusHistory history = new OrderStatusHistory();
+        history.orderId = orderId;
+        history.fromStatus = fromStatus;
+        history.toStatus = toStatus;
+        history.actorType = actorType;
+        history.actorId = actorId;
+        history.reason = reason;
+        return history;
+    }
+
     public Long getId() {
         return id;
+    }
+
+    public String getFromStatus() {
+        return fromStatus;
+    }
+
+    public String getToStatus() {
+        return toStatus;
+    }
+
+    public String getActorType() {
+        return actorType;
     }
 }

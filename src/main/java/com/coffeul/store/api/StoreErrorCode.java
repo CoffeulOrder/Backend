@@ -5,7 +5,8 @@ import com.coffeul.common.error.ErrorCode;
 public enum StoreErrorCode implements ErrorCode {
 
     NOT_FOUND(404, "ST001", "매장을 찾을 수 없어요."),
-    NOT_ACCEPTING_ORDERS(409, "OD001", "지금은 주문을 받지 않아요.");
+    NOT_ACCEPTING_ORDERS(409, "OD001", "지금은 주문을 받지 않아요."),
+    FORBIDDEN(403, "AUTH_004", "이 매장에 접근할 권한이 없어요.");
 
     private final int status;
     private final String code;

@@ -232,6 +232,11 @@ public class TestFixtures {
                 placed ? now : null);
     }
 
+    /** 결제 대기 만료 작업(OrderExpiryJob)을 실제로 1분씩 기다리지 않고 검증하기 위한 헬퍼. */
+    public void ageOrderExpiresAt(long orderId, Instant expiresAt) {
+        jdbc.update("UPDATE `orders` SET `expires_at` = ? WHERE `id` = ?", expiresAt, orderId);
+    }
+
     private long insert(String sql, Object... args) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
