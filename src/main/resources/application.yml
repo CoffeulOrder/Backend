@@ -54,6 +54,9 @@ coffeul:
     # ses | log — SES 샌드박스 해제와 발신 도메인이 준비되기 전까지는 로그 어댑터로 돈다 (MAIL_PROVIDER)
     mail-provider: ${MAIL_PROVIDER:log}
     mail-from: ${MAIL_FROM:no-reply@coffeul.app}
+  aws:
+    # SES 등 AWS 클라이언트가 쓰는 리전. 서울.
+    region: ${AWS_REGION:ap-northeast-2}
   business-zone: Asia/Seoul
   cdn:
     base-url: ${CDN_BASE_URL:}
