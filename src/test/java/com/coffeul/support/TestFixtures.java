@@ -12,6 +12,7 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -112,6 +113,16 @@ public class TestFixtures {
     public long createStore(long merchantId, long schoolId, String name, String status) {
         return insert("INSERT INTO `store` (`merchant_id`, `school_id`, `name`, `status`) VALUES (?, ?, ?, ?)",
                 merchantId, schoolId, name, status);
+    }
+
+    public void setStoreLocationAndNotice(long storeId, String location, String notice) {
+        jdbc.update("UPDATE `store` SET `location` = ?, `notice` = ? WHERE `id` = ?", location, notice, storeId);
+    }
+
+    public void createBusinessHour(long storeId, int dayOfWeek, LocalTime openTime, LocalTime closeTime, boolean closed) {
+        jdbc.update("INSERT INTO `store_business_hour` (`store_id`, `day_of_week`, `open_time`, `close_time`, `is_closed`) " +
+                        "VALUES (?, ?, ?, ?, ?)",
+                storeId, dayOfWeek, openTime, closeTime, closed);
     }
 
     public long createMember(long schoolId, String email, String status) {
