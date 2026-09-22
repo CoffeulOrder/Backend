@@ -8,7 +8,9 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZoneOffset;
 import java.time.LocalDate;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -32,6 +34,72 @@ public class TestFixtures {
     public long createSchool(String name) {
         return insert("INSERT INTO `school` (`name`, `campus`, `status`) VALUES (?, ?, 'ACTIVE')",
                 name, "테스트캠퍼스");
+    }
+
+    public int countMembersByEmail(String email) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `member` WHERE `email` = ?",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public int countTermsAgreements(long memberId) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `terms_agreement` WHERE `member_id` = ?",
+                Integer.class, memberId);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * 인증 토큰이 실제로 소비됐는지 (REQ-EV-005).
+     * <p>DATETIME은 시간대가 없어서 드라이버가 Instant로 바로 못 준다. 접속 문자열이 serverTimezone=UTC라
+     * 읽어온 값을 UTC로 해석한다 (AbstractIntegrationTest의 컨테이너 설정과 같은 전제).
+     */
+    public Instant consumedAtOf(String email) {
+        Timestamp consumedAt = jdbc.queryForObject(
+                "SELECT `consumed_at` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                Timestamp.class, email);
+        return consumedAt == null ? null : consumedAt.toLocalDateTime().toInstant(ZoneOffset.UTC);
+    }
+
+    public long createSchoolEmailDomain(long schoolId, String domain) {
+        return insert("INSERT INTO `school_email_domain` (`school_id`, `domain`) VALUES (?, ?)", schoolId, domain);
+    }
+
+    public long insertEmailVerification(String email, String purpose, String codeHash,
+                                         Instant expiresAt, Instant createdAt) {
+        return insert("INSERT INTO `email_verification` (`email`, `purpose`, `code_hash`, `expires_at`, `created_at`) " +
+                        "VALUES (?, ?, ?, ?, ?)",
+                email, purpose, codeHash, expiresAt, createdAt);
+    }
+
+    public int countEmailVerifications(String email) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `email_verification` WHERE `email` = ?",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public int attemptCountOf(String email) {
+        Integer count = jdbc.queryForObject(
+                "SELECT `attempt_count` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public String tokenHashOf(String email) {
+        return jdbc.queryForObject(
+                "SELECT `token_hash` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                String.class, email);
+    }
+
+    /** 인증 토큰 만료(30분)를 실제로 기다리지 않고 검증하기 위한 헬퍼. */
+    public void expireVerificationToken(String email, Instant tokenExpiresAt) {
+        jdbc.update("UPDATE `email_verification` SET `token_expires_at` = ? WHERE `email` = ?",
+                tokenExpiresAt, email);
+    }
+
+    /** 60초 재발송 제한 · 만료를 테스트에서 실제로 기다리지 않고 검증하기 위한 헬퍼. */
+    public void ageEmailVerification(String email, Instant createdAt, Instant expiresAt) {
+        jdbc.update("UPDATE `email_verification` SET `created_at` = ?, `expires_at` = ? WHERE `email` = ?",
+                createdAt, expiresAt, email);
     }
 
     public long createMerchant(String businessRegNo, BigDecimal commissionRate) {

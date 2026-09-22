@@ -43,7 +43,17 @@ coffeul:
     max-attempts: 5
     gateway: ${PAYMENT_GATEWAY:fake}
   verification:
+    # REQ-EV-002 · 003 · 004의 숫자. rules.py 설정 키 VERIFICATION_CODE_TTL_SECONDS=300
     code-ttl-seconds: 300
+    token-ttl-seconds: 1800
+    resend-interval-seconds: 60
+    daily-send-limit: 10
+    max-attempts: 5
+    retention-days: 7
+    cleanup-cron: "0 0 4 * * *"
+    # ses | log — SES 샌드박스 해제와 발신 도메인이 준비되기 전까지는 로그 어댑터로 돈다 (MAIL_PROVIDER)
+    mail-provider: ${MAIL_PROVIDER:log}
+    mail-from: ${MAIL_FROM:no-reply@coffeul.app}
   business-zone: Asia/Seoul
   cdn:
     base-url: ${CDN_BASE_URL:}
