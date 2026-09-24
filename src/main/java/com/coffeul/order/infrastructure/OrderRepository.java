@@ -18,6 +18,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     long countByMemberIdAndStatusNotIn(Long memberId, Collection<String> excludedStatuses);
 
+    long countByStoreIdAndStatusIn(Long storeId, Collection<String> includedStatuses);
+
     /**
      * 상태 전이(MS-22~26 · 결제 대기 만료 작업) 전용 조회. 같은 주문에 동시에 들어온 요청을
      * {@code SELECT ... FOR UPDATE}로 한 줄로 세운다 — 뒤에 걸린 요청은 앞선 트랜잭션이 커밋할 때까지
