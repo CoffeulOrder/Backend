@@ -9,4 +9,6 @@ import java.util.List;
 public interface StaffStoreRepository extends JpaRepository<StaffStore, StaffStoreId> {
 
     List<StaffStore> findByIdStaffAccountId(Long staffAccountId);
+
+    boolean existsByIdStaffAccountIdAndIdStoreId(Long staffAccountId, Long storeId);
 }

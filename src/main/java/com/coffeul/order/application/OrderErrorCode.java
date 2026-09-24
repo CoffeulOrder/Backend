@@ -11,7 +11,9 @@ public enum OrderErrorCode implements ErrorCode {
     WITHDRAWAL_LIMIT_NOT_AGREED(400, "OD007", "주문 취소 제한 안내에 동의해주세요."),
     SOLD_OUT(409, "OD002", "품절된 메뉴가 있어요."),
     IDEMPOTENCY_CONFLICT(409, "OD010", "같은 요청 키로 다른 주문을 보낼 수 없어요."),
-    MEMBER_NOT_USABLE(403, "AUTH_005", "이용할 수 없는 계정이에요.");
+    MEMBER_NOT_USABLE(403, "AUTH_005", "이용할 수 없는 계정이에요."),
+    ORDER_NOT_FOUND(404, "OD005", "주문을 찾을 수 없어요."),
+    INVALID_TRANSITION(409, "OD006", "지금 상태에서는 할 수 없는 요청이에요.");
 
     private final int status;
     private final String code;

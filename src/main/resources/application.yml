@@ -39,6 +39,8 @@ coffeul:
     staff-login-lock-seconds: 30
   order:
     payment-expire-minutes: 20
+    # rules.py JOBS: 결제 대기 만료, 1분마다.
+    expire-cron: "0 * * * * *"
   payment:
     max-attempts: 5
     gateway: ${PAYMENT_GATEWAY:fake}
