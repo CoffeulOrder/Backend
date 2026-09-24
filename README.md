@@ -28,6 +28,29 @@
 3. `./mvnw spring-boot:run`
 4. API 문서: `http://localhost:8080/swagger-ui/index.html` (원본 JSON은 `/v3/api-docs`). 설정은 `common.config.OpenApiConfig`(제목 · 설명만, 나머지는 springdoc 기본값) — `common`이 `@ApplicationModule(OPEN)`이라 이 자리에 둠.
 
+## 서버 한 번에 띄우기 (프런트용, Docker Compose)
+
+프런트 팀원이 Java·MySQL 설치 없이 서버를 로컬에 띄워보는 방법. Docker(Docker Desktop 또는 Colima)만 있으면 된다.
+
+```bash
+docker compose up --build -d      # 첫 빌드는 Maven 의존성 때문에 몇 분 걸린다
+curl localhost:8080/actuator/health
+docker compose down               # 끄기 (데이터는 남음). 데이터까지 지우고 처음부터: docker compose down -v
+```
+
+- 뜨는 것: MySQL 8.4(호스트 포트 **3307**), 서버(**8080**, Swagger는 `/swagger-ui/index.html`), 그리고 가짜 데이터를 넣고 끝나는 `dev-seed`.
+- 결제는 가짜 게이트웨이(`PAYMENT_GATEWAY=fake`), 인증 메일은 실제로 안 보내고 **서버 로그에 코드를 찍는다**(`docker compose logs backend | grep 가짜`) — 회원가입 흐름을 테스트할 땐 거기서 코드를 확인한다.
+- 시드에는 진짜 사업자 정보가 없다. 상호·주소는 `[DEV]` 표시가 붙은 가짜이고, 계정 비밀번호는 전부 `dev-password-1234`다.
+
+| 종류 | 아이디 | 로그인 API | 접근 |
+|---|---|---|---|
+| 고객 | `dev-member@g.eulji.ac.kr` | `POST /api/v1/auth/login` (`email`, `password`) | 학교 = 을지대 |
+| 사장님 | `dev-owner` | `POST /api/v1/auth/staff/login` (`loginId`, `password`) | 범석관점 · 뉴밀레니엄관점 |
+| 직원 | `dev-staff` | `POST /api/v1/auth/staff/login` | 범석관점만 |
+
+- 메뉴는 두 매장 모두 공식 메뉴 41개(`db/seed/menu-seed.sql`)가 들어 있다. `docker/dev-seed/dev-seed.sql`은 **로컬 전용**이고 운영 DB에 넣지 않는다 — Flyway 마이그레이션이 아니다.
+- 서버 코드를 바꾸면 `docker compose up --build -d`로 다시 빌드한다.
+
 ## 통합 테스트 (Testcontainers)
 
 `./mvnw test`는 실제 MySQL 8.4 컨테이너를 띄워서 Flyway 마이그레이션 + JPA 스키마 검증 + API까지 엔드투엔드로 확인한다

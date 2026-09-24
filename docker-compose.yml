@@ -1,0 +1,57 @@
+# 프런트 팀원이 서버를 직접 띄워보기 위한 로컬 개발용 구성. `docker compose up --build` 한 번이면 된다.
+# 아래 비밀번호·계정은 전부 이 로컬 컨테이너에서만 쓰는 가짜 값이다. 운영 값과 무관하고, 운영에 절대 쓰지 않는다.
+#
+#   mysql     MySQL 8.4 (테스트·운영과 같은 버전). 호스트 포트는 3307 — 로컬에 MySQL이 이미 있어도 안 부딪히게.
+#   backend   이 레포를 빌드한 Spring Boot 서버. Flyway가 스키마와 학교 데이터를 만든다. 호스트 포트 8080.
+#   dev-seed  Flyway가 끝난 뒤 가짜 사장님·매장·메뉴·계정을 넣고 종료한다(여러 번 실행해도 중복으로 안 들어간다).
+
+services:
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: coffeul
+      MYSQL_USER: coffeul
+      MYSQL_PASSWORD: coffeul-dev
+      MYSQL_ROOT_PASSWORD: coffeul-dev-root
+      TZ: UTC
+    command: ["--character-set-server=utf8mb4", "--collation-server=utf8mb4_0900_ai_ci"]
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-pcoffeul-dev-root"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  backend:
+    build: .
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      DB_URL: jdbc:mysql://mysql:3306/coffeul?serverTimezone=UTC&characterEncoding=UTF-8
+      DB_USERNAME: coffeul
+      DB_PASSWORD: coffeul-dev
+      # 결제는 가짜 게이트웨이, 인증 메일은 실제로 보내지 않고 서버 로그에 코드를 찍는다.
+      PAYMENT_GATEWAY: fake
+      MAIL_PROVIDER: log
+    ports:
+      - "8080:8080"
+
+  dev-seed:
+    image: mysql:8.4
+    depends_on:
+      - backend
+    restart: "no"
+    environment:
+      MYSQL_PWD: coffeul-dev
+    volumes:
+      - ./docker/dev-seed:/dev-seed:ro
+      - ./src/main/resources/db/seed:/menu-seed:ro
+    entrypoint: ["sh", "/dev-seed/run.sh"]
+
+volumes:
+  mysql-data:
