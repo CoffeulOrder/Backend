@@ -262,6 +262,38 @@ public class TestFixtures {
                 placed ? now : null, rejectReasonCode, orderId);
     }
 
+    /**
+     * 주문 항목(order_line)을 직접 넣는다. 조회 API(MS-17 · MS-18) 테스트가 주문 생성 API(MS-16)에 기대지 않게 하려는 것이다 —
+     * MS-16은 인증 방식이 바뀔 예정이라 거기에 묶이면 무관한 테스트가 같이 깨진다.
+     */
+    public long createOrderLine(long orderId, long menuItemId, String menuName, int unitPrice, int quantity) {
+        return insert(
+                "INSERT INTO `order_line` (`order_id`, `menu_item_id`, `menu_name_snapshot`, `base_price_snapshot`, " +
+                        "`unit_price`, `quantity`, `line_amount`) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                orderId, menuItemId, menuName, unitPrice, unitPrice, quantity, unitPrice * quantity);
+    }
+
+    public long createOrderLineOption(long orderLineId, long optionItemId, String groupName, String itemName) {
+        return insert(
+                "INSERT INTO `order_line_option` (`order_line_id`, `option_item_id`, `option_group_name_snapshot`, " +
+                        "`option_item_name_snapshot`, `price_delta_snapshot`) VALUES (?, ?, ?, ?, 0)",
+                orderLineId, optionItemId, groupName, itemName);
+    }
+
+    /** 목록 정렬(created_at)과 대기 순서(placed_at)를 테스트에서 명시적으로 잡는다. */
+    public void setOrderTimes(long orderId, Instant createdAt, Instant placedAt) {
+        jdbc.update("UPDATE `orders` SET `created_at` = ?, `placed_at` = ? WHERE `id` = ?",
+                createdAt, placedAt, orderId);
+    }
+
+    /** 취소 · 거절 시각처럼 MS-19 · MS-23이 채울 값을 조회 테스트에서 미리 넣는다. column은 아래 둘만 허용한다. */
+    public void setOrderEventTime(long orderId, String column, Instant at) {
+        if (!"canceled_at".equals(column) && !"rejected_at".equals(column)) {
+            throw new IllegalArgumentException("허용하지 않는 컬럼: " + column);
+        }
+        jdbc.update("UPDATE `orders` SET `" + column + "` = ? WHERE `id` = ?", at, orderId);
+    }
+
     private long insert(String sql, Object... args) {
         KeyHolder keyHolder = new GeneratedKeyHolder();
         jdbc.update(connection -> {
