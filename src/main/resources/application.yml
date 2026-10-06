@@ -55,7 +55,8 @@ coffeul:
     cleanup-cron: "0 0 4 * * *"
     # ses | log — SES 샌드박스 해제와 발신 도메인이 준비되기 전까지는 로그 어댑터로 돈다 (MAIL_PROVIDER)
     mail-provider: ${MAIL_PROVIDER:log}
-    mail-from: ${MAIL_FROM:no-reply@coffeul.app}
+    # 발신 도메인은 orso.it.kr (2026-10-06 SES 등록 · DKIM·SPF·DMARC 설정 완료)
+    mail-from: ${MAIL_FROM:no-reply@orso.it.kr}
   aws:
     # SES 등 AWS 클라이언트가 쓰는 리전. 서울.
     region: ${AWS_REGION:ap-northeast-2}
