@@ -8,4 +8,6 @@ import java.util.List;
 public interface StoreRepository extends JpaRepository<Store, Long> {
 
     List<Store> findByMerchantId(Long merchantId);
+
+    List<Store> findBySchoolId(Long schoolId);
 }

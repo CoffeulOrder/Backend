@@ -20,6 +20,8 @@
   <properties>
     <java.version>21</java.version>
     <spring-modulith.version>1.4.1</spring-modulith.version>
+    <!-- 2026-09-19 Maven Central 실제 최신 안정판 확인 후 반영 -->
+    <aws-sdk.version>2.46.7</aws-sdk.version>
   </properties>
 
   <dependencyManagement>
@@ -28,6 +30,13 @@
         <groupId>org.springframework.modulith</groupId>
         <artifactId>spring-modulith-bom</artifactId>
         <version>${spring-modulith.version}</version>
+        <type>pom</type>
+        <scope>import</scope>
+      </dependency>
+      <dependency>
+        <groupId>software.amazon.awssdk</groupId>
+        <artifactId>bom</artifactId>
+        <version>${aws-sdk.version}</version>
         <type>pom</type>
         <scope>import</scope>
       </dependency>
@@ -57,6 +66,13 @@
     <dependency>
       <groupId>org.springframework.boot</groupId>
       <artifactId>spring-boot-starter-actuator</artifactId>
+    </dependency>
+
+    <!-- API 문서 (rules.py 완료 기준: "Swagger 응답 예시"). Maven Central 최신 안정판(2025-03) 확인 후 반영 -->
+    <dependency>
+      <groupId>org.springdoc</groupId>
+      <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+      <version>2.8.6</version>
     </dependency>
 
     <!-- 모듈 경계 (rules.py: "경계는 CI 테스트(Spring Modulith verify)가 자동으로 검사") -->
@@ -98,6 +114,12 @@
       <version>0.12.6</version>
       <scope>runtime</scope>
     </dependency>
+    <!-- 인증코드 메일 발송 (MAIL_PROVIDER=ses일 때만 실제로 쓰인다) -->
+    <dependency>
+      <groupId>software.amazon.awssdk</groupId>
+      <artifactId>sesv2</artifactId>
+    </dependency>
+
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-crypto</artifactId>

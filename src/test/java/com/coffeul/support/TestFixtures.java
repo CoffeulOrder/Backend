@@ -8,7 +8,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import java.math.BigDecimal;
 import java.sql.PreparedStatement;
 import java.sql.Statement;
+import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * 통합 테스트용 최소 데이터 시딩 헬퍼. 실제 사업자 정보(merchant)는 여전히 가짜 값이며,
@@ -19,6 +25,8 @@ public class TestFixtures {
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final JdbcTemplate jdbc;
+    // uk_orders_pickup_no(store_id, business_date, pickup_no) 충돌 방지 — 테스트마다 새 인스턴스라 1부터 시작해도 안전.
+    private final AtomicInteger pickupNoSequence = new AtomicInteger(1);
 
     public TestFixtures(JdbcTemplate jdbc) {
         this.jdbc = jdbc;
@@ -27,6 +35,72 @@ public class TestFixtures {
     public long createSchool(String name) {
         return insert("INSERT INTO `school` (`name`, `campus`, `status`) VALUES (?, ?, 'ACTIVE')",
                 name, "테스트캠퍼스");
+    }
+
+    public int countMembersByEmail(String email) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `member` WHERE `email` = ?",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public int countTermsAgreements(long memberId) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `terms_agreement` WHERE `member_id` = ?",
+                Integer.class, memberId);
+        return count == null ? 0 : count;
+    }
+
+    /**
+     * 인증 토큰이 실제로 소비됐는지 (REQ-EV-005).
+     * <p>DATETIME은 시간대가 없어서 드라이버가 Instant로 바로 못 준다. 접속 문자열이 serverTimezone=UTC라
+     * 읽어온 값을 UTC로 해석한다 (AbstractIntegrationTest의 컨테이너 설정과 같은 전제).
+     */
+    public Instant consumedAtOf(String email) {
+        Timestamp consumedAt = jdbc.queryForObject(
+                "SELECT `consumed_at` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                Timestamp.class, email);
+        return consumedAt == null ? null : consumedAt.toLocalDateTime().toInstant(ZoneOffset.UTC);
+    }
+
+    public long createSchoolEmailDomain(long schoolId, String domain) {
+        return insert("INSERT INTO `school_email_domain` (`school_id`, `domain`) VALUES (?, ?)", schoolId, domain);
+    }
+
+    public long insertEmailVerification(String email, String purpose, String codeHash,
+                                         Instant expiresAt, Instant createdAt) {
+        return insert("INSERT INTO `email_verification` (`email`, `purpose`, `code_hash`, `expires_at`, `created_at`) " +
+                        "VALUES (?, ?, ?, ?, ?)",
+                email, purpose, codeHash, expiresAt, createdAt);
+    }
+
+    public int countEmailVerifications(String email) {
+        Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `email_verification` WHERE `email` = ?",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public int attemptCountOf(String email) {
+        Integer count = jdbc.queryForObject(
+                "SELECT `attempt_count` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                Integer.class, email);
+        return count == null ? 0 : count;
+    }
+
+    public String tokenHashOf(String email) {
+        return jdbc.queryForObject(
+                "SELECT `token_hash` FROM `email_verification` WHERE `email` = ? ORDER BY `created_at` DESC LIMIT 1",
+                String.class, email);
+    }
+
+    /** 인증 토큰 만료(30분)를 실제로 기다리지 않고 검증하기 위한 헬퍼. */
+    public void expireVerificationToken(String email, Instant tokenExpiresAt) {
+        jdbc.update("UPDATE `email_verification` SET `token_expires_at` = ? WHERE `email` = ?",
+                tokenExpiresAt, email);
+    }
+
+    /** 60초 재발송 제한 · 만료를 테스트에서 실제로 기다리지 않고 검증하기 위한 헬퍼. */
+    public void ageEmailVerification(String email, Instant createdAt, Instant expiresAt) {
+        jdbc.update("UPDATE `email_verification` SET `created_at` = ?, `expires_at` = ? WHERE `email` = ?",
+                createdAt, expiresAt, email);
     }
 
     public long createMerchant(String businessRegNo, BigDecimal commissionRate) {
@@ -39,6 +113,16 @@ public class TestFixtures {
     public long createStore(long merchantId, long schoolId, String name, String status) {
         return insert("INSERT INTO `store` (`merchant_id`, `school_id`, `name`, `status`) VALUES (?, ?, ?, ?)",
                 merchantId, schoolId, name, status);
+    }
+
+    public void setStoreLocationAndNotice(long storeId, String location, String notice) {
+        jdbc.update("UPDATE `store` SET `location` = ?, `notice` = ? WHERE `id` = ?", location, notice, storeId);
+    }
+
+    public void createBusinessHour(long storeId, int dayOfWeek, LocalTime openTime, LocalTime closeTime, boolean closed) {
+        jdbc.update("INSERT INTO `store_business_hour` (`store_id`, `day_of_week`, `open_time`, `close_time`, `is_closed`) " +
+                        "VALUES (?, ?, ?, ?, ?)",
+                storeId, dayOfWeek, openTime, closeTime, closed);
     }
 
     public long createMember(long schoolId, String email, String status) {
@@ -111,9 +195,71 @@ public class TestFixtures {
                 optionGroupId, name, priceDelta, isDefault);
     }
 
+    /** SM-7 탈퇴가 푸시 토큰을 비활성으로 바꾸는지 보려고 심는 행. */
+    public long createDeviceToken(String ownerType, long ownerId) {
+        return insert(
+                "INSERT INTO `device_token` (`owner_type`, `owner_id`, `app_type`, `expo_push_token`, "
+                        + "`platform`, `is_active`, `last_registered_at`) VALUES (?, ?, ?, ?, ?, TRUE, ?)",
+                ownerType, ownerId, "CUSTOMER",
+                "ExponentPushToken[" + UUID.randomUUID() + "]", "IOS", Instant.now());
+    }
+
+    public int countActiveDeviceTokens(String ownerType, long ownerId) {
+        Integer count = jdbc.queryForObject(
+                "SELECT COUNT(*) FROM `device_token` WHERE `owner_type` = ? AND `owner_id` = ? AND `is_active` = TRUE",
+                Integer.class, ownerType, ownerId);
+        return count == null ? 0 : count;
+    }
+
     public int countOrdersByMember(long memberId) {
         Integer count = jdbc.queryForObject("SELECT COUNT(*) FROM `orders` WHERE `member_id` = ?", Integer.class, memberId);
         return count == null ? 0 : count;
+    }
+
+    /**
+     * 상태 전이(MS-22~26)를 거치지 않고 임의 상태의 주문 행을 직접 심는다. ck_orders_placed는
+     * PENDING_PAYMENT·EXPIRED가 아니면 placed_at·business_date·pickup_no를 요구하고,
+     * ck_orders_reject_reason은 REJECTED에 reject_reason_code를 요구해서 상태별로 채워 넣는다.
+     */
+    public long createOrder(long memberId, long storeId, long schoolId, String status) {
+        boolean placed = !"PENDING_PAYMENT".equals(status) && !"EXPIRED".equals(status);
+        String rejectReasonCode = "REJECTED".equals(status) ? "OTHER" : null;
+        Instant now = Instant.now();
+
+        return insert(
+                "INSERT INTO `orders` (`order_code`, `member_id`, `store_id`, `school_id`, `status`, " +
+                        "`business_date`, `pickup_no`, `subtotal_amount`, `discount_amount`, `total_amount`, " +
+                        "`reject_reason_code`, `withdrawal_limit_agreed_at`, `commission_rate_snapshot`, " +
+                        "`idempotency_key`, `request_hash`, `expires_at`, `placed_at`) " +
+                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "CF-TEST-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
+                memberId, storeId, schoolId, status,
+                placed ? LocalDate.now() : null,
+                placed ? pickupNoSequence.getAndIncrement() : null,
+                4000, 0, 4000,
+                rejectReasonCode,
+                now, new BigDecimal("0.0300"),
+                UUID.randomUUID().toString(), "0".repeat(64), now.plusSeconds(1200),
+                placed ? now : null);
+    }
+
+    /** 결제 대기 만료 작업(OrderExpiryJob)을 실제로 1분씩 기다리지 않고 검증하기 위한 헬퍼. */
+    public void ageOrderExpiresAt(long orderId, Instant expiresAt) {
+        jdbc.update("UPDATE `orders` SET `expires_at` = ? WHERE `id` = ?", expiresAt, orderId);
+    }
+
+    /**
+     * MS-16(주문 생성) API로 실제 order_line · order_line_option까지 만든 주문을, 상태 전이(MS-22~26)
+     * 없이 원하는 상태로 바로 승격시킨다. createOrder와 같은 규칙(ck_orders_placed · ck_orders_reject_reason)을 따른다.
+     */
+    public void promoteOrderStatus(long orderId, String status) {
+        boolean placed = !"PENDING_PAYMENT".equals(status) && !"EXPIRED".equals(status);
+        String rejectReasonCode = "REJECTED".equals(status) ? "OTHER" : null;
+        Instant now = Instant.now();
+        jdbc.update("UPDATE `orders` SET `status` = ?, `business_date` = ?, `pickup_no` = ?, `placed_at` = ?, " +
+                        "`reject_reason_code` = ? WHERE `id` = ?",
+                status, placed ? LocalDate.now() : null, placed ? pickupNoSequence.getAndIncrement() : null,
+                placed ? now : null, rejectReasonCode, orderId);
     }
 
     private long insert(String sql, Object... args) {
