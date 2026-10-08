@@ -173,6 +173,16 @@ SOURCE db/seed/menu-seed.sql;
 - **`member` ↔ `order` 순환 의존을 역방향 포트로 끊었다.** SM-7은 진행 중 주문 수가 필요한데, `order`가 이미 주문 생성(MS-16)에서 `member.api.MemberStatusApi`를 부르고 있어서 member가 `order.api`를 직접 부르면 **Modulith가 빌드를 깬다**(실제로 깨졌다). 그래서 `member.api.ActiveOrderCountPort`를 member가 정의하고 `order.infrastructure.ActiveOrderCountAdapter`가 구현한다 — verification이 `MemberAccountPort`를 정의하고 member가 구현하는 것과 같은 방식이다. "진행 중"의 정의는 주문 모듈 지식이라 어댑터가 민섭의 `OrderQueryApi#countActiveOrders`에 그대로 위임한다(종료 상태 목록을 두 군데 두면 탈퇴 판정만 조용히 어긋난다).
 - **푸시 토큰 비활성은 임시 어댑터다.** `device_token`의 주인 모듈(notification, 태완 형)이 아직 없어서 `PushTokenDeactivationPort` 뒤에 JdbcTemplate 어댑터를 뒀다. 모듈이 생기면 **어댑터만** notification.api 호출로 바꾼다 — 학교 조회가 걸어간 길과 같다.
 
+## 기준 구현 (푸시 토큰 등록)
+
+- **TW-1** (`PUT /devices/push-token`) — notification 모듈, REQ-NT-001 · 002. 고객앱 · 관리자앱이 로그인 직후, 관리자앱은 매장을 바꿀 때마다 부른다.
+  - **토큰(`uk_device_token_token`) 기준 upsert 한 문장**이다. 같은 토큰이 다른 계정으로 오면 주인 · 앱 종류 · 매장을 통째로 덮어쓴다(기기 공유 · 재로그인). 비활성이던 토큰은 다시 살아난다. 읽고 나서 쓰는 방식이 아니라서 로그인 등록과 매장 변경 재등록이 동시에 들어와도 유니크 위반이 나지 않는다.
+  - **계정 종류와 앱 종류가 맞아야 한다**: CUSTOMER 앱은 MEMBER만, MANAGER 앱은 STAFF · OWNER만 — 아니면 **C003**(ADMIN은 어느 쪽도 아니다). 이 검사가 가장 먼저다.
+  - 관리자앱은 `storeId`가 필수(없으면 **C001** + `errors[].field=storeId`)이고 `StoreAccessPolicy`로 접근 권한을 본다(**AUTH_004**). 고객앱이 `storeId`를 보내면 **C001**로 돌려보낸다 — DB 제약(`ck_device_token_app_owner`)이 어차피 막는 조합이라, 조용히 버리면 클라이언트 실수가 묻힌다.
+  - 토큰 형식은 `ExponentPushToken[...]` / `ExpoPushToken[...]`(**NT001**). `platform` · `appType` 값 검사는 Bean Validation(**C001**).
+  - **알려진 한계**: 탈퇴한 회원의 access 토큰(최대 1시간)으로 등록하면 막지 않는다. 계정 상태 확인에 `member.api`를 부르면 member → notification(탈퇴 시 토큰 비활성) 방향과 합쳐져 순환 의존이 된다. 푸시 발송 쪽에서 `MEMBER` 상태를 걸러내는 게 맞는 자리다.
+  - `device_token` 엔티티는 아직 없다 — 쓰기만 하는 TW-1에는 필요 없고, 발송(REQ-NT-003~) 작업이 읽을 때 만든다. 탈퇴(SM-7) · 로그아웃(MS-4)의 푸시 토큰 비활성은 아직 임시 어댑터 / 무시 상태다(위 SM-7 절).
+
 ## 기준 구현 (AuthUser 인자 리졸버)
 
 `auth.infrastructure.security.AuthUserArgumentResolver` — 컨트롤러가 인자에 `auth.api.AuthUser`를 적기만 하면 Authorization 헤더의 access 토큰에서 채워진다. 원래 민섭 담당이었는데 MS-22~26이 MS-27(결제 승인) 선행 때문에 밀려서 2026-09-19에 성민이 맡았다.
