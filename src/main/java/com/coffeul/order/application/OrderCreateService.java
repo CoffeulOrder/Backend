@@ -38,8 +38,8 @@ import java.util.Optional;
 
 /**
  * MS-16(주문 생성) 기준 구현.
- * <p><b>알려진 한계</b> (커밋·README 참고): 아직 auth 모듈이 없어 memberId는 컨트롤러가 임시 헤더로 받고,
- * merchant_pg 실데이터가 없어 {@code payment} 행은 영속화하지 않는다(응답의 payment 블록은 계산만).
+ * 기본 가짜 어댑터는 응답만 계산한다. dev 결제 흐름을 명시적으로 켜면 가짜 결제 시도를 함께 저장한다.
+ * memberId는 컨트롤러에서 검증한 고객 토큰의 주체다. 실제 PG 연동은 별도 구현 대상이다.
  */
 @Service
 public class OrderCreateService {
@@ -91,14 +91,15 @@ public class OrderCreateService {
             throw new BusinessException(OrderErrorCode.WITHDRAWAL_LIMIT_NOT_AGREED);
         }
 
+        // 재요청이어도 유효한 access 토큰만으로 정지·탈퇴 계정의 주문에 접근할 수 없게 한다.
+        if (!memberStatusApi.isActive(memberId)) {
+            throw new BusinessException(OrderErrorCode.MEMBER_NOT_USABLE);
+        }
+
         String requestHash = RequestHash.of(request);
         Optional<Order> existing = orderRepository.findByMemberIdAndIdempotencyKey(memberId, idempotencyKey);
         if (existing.isPresent()) {
             return new Result(replay(existing.get(), requestHash), false);
-        }
-
-        if (!memberStatusApi.isActive(memberId)) {
-            throw new BusinessException(OrderErrorCode.MEMBER_NOT_USABLE);
         }
 
         StoreView store = storeQueryApi.findById(request.storeId())
@@ -126,7 +127,8 @@ public class OrderCreateService {
 
         List<OrderCreateResponse.LineItem> echoLines = persistLinesAndBuildEcho(order.getId(), drafts);
 
-        PaymentAttemptView payment = paymentPreparationApi.prepareFirstAttempt(orderCode, order.getTotalAmount());
+        PaymentAttemptView payment = paymentPreparationApi.prepareFirstAttempt(
+                order.getId(), order.getStoreId(), orderCode, order.getTotalAmount());
         String orderName = drafts.size() == 1
                 ? drafts.get(0).menu().name()
                 : drafts.get(0).menu().name() + " 외 " + (drafts.size() - 1) + "건";
@@ -213,8 +215,9 @@ public class OrderCreateService {
                         line.getUnitPrice(), line.getQuantity(), line.getLineAmount()))
                 .toList();
 
-        // 가짜 어댑터는 orderCode만으로 결정되는 순수 함수라 재계산해도 같은 값이 나온다.
-        PaymentAttemptView payment = paymentPreparationApi.prepareFirstAttempt(order.getOrderCode(), order.getTotalAmount());
+        // 준비 포트가 같은 첫 시도를 반환한다. dev 영속화 모드는 기존 행을 재사용한다.
+        PaymentAttemptView payment = paymentPreparationApi.prepareFirstAttempt(
+                order.getId(), order.getStoreId(), order.getOrderCode(), order.getTotalAmount());
         String orderName = lines.isEmpty() ? "" : lines.size() == 1
                 ? lines.get(0).getMenuNameSnapshot()
                 : lines.get(0).getMenuNameSnapshot() + " 외 " + (lines.size() - 1) + "건";

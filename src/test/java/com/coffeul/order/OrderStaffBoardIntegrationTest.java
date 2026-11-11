@@ -72,7 +72,8 @@ class OrderStaffBoardIntegrationTest extends AbstractIntegrationTest {
                 "items", List.of(Map.of("menuId", menuItemId, "quantity", 2, "optionItemIds", List.of(sizeLOptionId))),
                 "withdrawalLimitAgreed", true));
         MvcResult result = mockMvc.perform(post("/api/v1/orders")
-                        .header("X-Member-Id", memberId)
+                        .header("Authorization", "Bearer " + jwtAccessTokenService.encode(
+                                new AuthUser(memberId, AuthUser.SubjectType.MEMBER, AuthUser.Role.CUSTOMER, schoolId, null), Instant.now()))
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))

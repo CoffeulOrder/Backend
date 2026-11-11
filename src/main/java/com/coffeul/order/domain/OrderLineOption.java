@@ -53,6 +53,10 @@ public class OrderLineOption {
         return orderLineId;
     }
 
+    public Long getOptionItemId() {
+        return optionItemId;
+    }
+
     public String getOptionItemNameSnapshot() {
         return optionItemNameSnapshot;
     }

@@ -18,12 +18,14 @@ until [ "$(query "SELECT COUNT(*) FROM flyway_schema_history WHERE success = 1" 
 done
 
 if [ "$(query "SELECT COUNT(*) FROM merchant WHERE business_reg_no = '9999999999'")" -gt 0 ]; then
+  $MYSQL < /dev-seed/fake-payment-config.sql
   echo "[dev-seed] 이미 들어 있다. 건너뜀."
   exit 0
 fi
 
 echo "[dev-seed] 가짜 사장님·매장·계정 입력"
 $MYSQL < /dev-seed/dev-seed.sql
+$MYSQL < /dev-seed/fake-payment-config.sql
 
 for storeName in 범석관점 뉴밀레니엄관점; do
   storeId=$(query "SELECT id FROM store WHERE name = '$storeName'")

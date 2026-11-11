@@ -1,10 +1,15 @@
 package com.coffeul.order;
 
 import com.coffeul.AbstractIntegrationTest;
+import com.coffeul.auth.api.AuthUser;
+import com.coffeul.auth.infrastructure.JwtAccessTokenService;
 import com.coffeul.support.TestFixtures;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -12,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -35,7 +41,12 @@ class OrderCreateIntegrationTest extends AbstractIntegrationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private JwtAccessTokenService jwtAccessTokenService;
+
     private TestFixtures fixtures;
+    private long schoolId;
+    private String customerAuthHeader;
     private long memberId;
     private long storeId;
     private long menuItemId;
@@ -47,11 +58,13 @@ class OrderCreateIntegrationTest extends AbstractIntegrationTest {
 
         // 테스트 메서드끼리 같은 컨테이너·DB를 공유하므로 UNIQUE 제약과 충돌하지 않게 매번 고유값을 쓴다.
         String unique = UUID.randomUUID().toString().substring(0, 8);
-        long schoolId = fixtures.createSchool("테스트대학교-" + unique);
+        schoolId = fixtures.createSchool("테스트대학교-" + unique);
         long merchantId = fixtures.createMerchant(String.format("%010d", unique.hashCode() & 0x7fffffff),
                 new BigDecimal("0.0300"));
         storeId = fixtures.createStore(merchantId, schoolId, "테스트매장", "OPEN");
         memberId = fixtures.createMember(schoolId, "member-" + unique + "@test.ac.kr", "ACTIVE");
+
+        customerAuthHeader = customerToken(memberId, Instant.now());
 
         menuItemId = fixtures.createMenuItem(storeId, "아메리카노", 4000, false);
         long sizeGroupId = fixtures.createOptionGroup(menuItemId, "사이즈", "SIZE", true, 1, 1);
@@ -70,7 +83,7 @@ class OrderCreateIntegrationTest extends AbstractIntegrationTest {
                 "withdrawalLimitAgreed", true));
 
         MvcResult result = mockMvc.perform(post("/api/v1/orders")
-                        .header("X-Member-Id", memberId)
+                        .header("Authorization", customerAuthHeader)
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -113,14 +126,14 @@ class OrderCreateIntegrationTest extends AbstractIntegrationTest {
                 "withdrawalLimitAgreed", true));
 
         mockMvc.perform(post("/api/v1/orders")
-                        .header("X-Member-Id", memberId)
+                        .header("Authorization", customerAuthHeader)
                         .header("Idempotency-Key", idempotencyKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/api/v1/orders")
-                        .header("X-Member-Id", memberId)
+                        .header("Authorization", customerAuthHeader)
                         .header("Idempotency-Key", idempotencyKey)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -142,7 +155,7 @@ class OrderCreateIntegrationTest extends AbstractIntegrationTest {
                 "withdrawalLimitAgreed", true));
 
         mockMvc.perform(post("/api/v1/orders")
-                        .header("X-Member-Id", memberId)
+                        .header("Authorization", customerAuthHeader)
                         .header("Idempotency-Key", UUID.randomUUID().toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -150,4 +163,119 @@ class OrderCreateIntegrationTest extends AbstractIntegrationTest {
 
         assertThat(fixtures.countOrdersByMember(memberId)).isEqualTo(0);
     }
+
+    @Test
+    void legacyMemberHeaderWithoutTokenIsRejected() throws Exception {
+        mockMvc.perform(post("/api/v1/orders")
+                        .header("X-Member-Id", memberId)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(validBody()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("C002"));
+        assertThat(fixtures.countOrdersByMember(memberId)).isZero();
+    }
+
+    @Test
+    void legacyMemberHeaderCannotOverrideTokenOwner() throws Exception {
+        long otherMemberId = fixtures.createMember(schoolId, UUID.randomUUID() + "@test.ac.kr", "ACTIVE");
+        mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", customerAuthHeader)
+                        .header("X-Member-Id", otherMemberId)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(validBody()))
+                .andExpect(status().isCreated());
+        assertThat(fixtures.countOrdersByMember(memberId)).isEqualTo(1);
+        assertThat(fixtures.countOrdersByMember(otherMemberId)).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"Bearer invalid-token", "Basic invalid-token"})
+    void invalidAuthorizationIsRejected(String authorization) throws Exception {
+        mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", authorization)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(validBody()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("C002"));
+        assertThat(fixtures.countOrdersByMember(memberId)).isZero();
+    }
+
+    @Test
+    void expiredTokenIsRejected() throws Exception {
+        mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", customerToken(memberId, Instant.now().minusSeconds(86400)))
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(validBody()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("C002"));
+        assertThat(fixtures.countOrdersByMember(memberId)).isZero();
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = AuthUser.Role.class, names = {"STAFF", "OWNER", "ADMIN"})
+    void staffRolesCannotCreateCustomerOrders(AuthUser.Role role) throws Exception {
+        // 회원과 같은 숫자의 주체 ID여도 직원 토큰은 거절해야 한다.
+        String authorization = "Bearer " + jwtAccessTokenService.encode(
+                new AuthUser(memberId, AuthUser.SubjectType.STAFF, role, null, null), Instant.now());
+        mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", authorization)
+                        .header("Idempotency-Key", UUID.randomUUID().toString())
+                        .contentType(MediaType.APPLICATION_JSON).content(validBody()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("C003"));
+        assertThat(fixtures.countOrdersByMember(memberId)).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"SUSPENDED", "WITHDRAWN"})
+    void inactiveMembersCannotCreateOrReplayOrders(String memberStatus) throws Exception {
+        String body = validBody();
+        String originalKey = UUID.randomUUID().toString();
+        mockMvc.perform(post("/api/v1/orders")
+                        .header("Authorization", customerAuthHeader)
+                        .header("Idempotency-Key", originalKey)
+                        .contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isCreated());
+        jdbcTemplate.update("UPDATE member SET status = ? WHERE id = ?", memberStatus, memberId);
+
+        for (String key : List.of(originalKey, UUID.randomUUID().toString())) {
+            mockMvc.perform(post("/api/v1/orders")
+                            .header("Authorization", customerAuthHeader)
+                            .header("Idempotency-Key", key)
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isForbidden())
+                    .andExpect(jsonPath("$.code").value("AUTH_005"));
+        }
+        assertThat(fixtures.countOrdersByMember(memberId)).isEqualTo(1);
+    }
+
+    @Test
+    void idempotencyKeysAreScopedToAuthenticatedMember() throws Exception {
+        long otherMemberId = fixtures.createMember(schoolId, UUID.randomUUID() + "@test.ac.kr", "ACTIVE");
+        String key = UUID.randomUUID().toString();
+        String body = validBody();
+        for (long id : List.of(memberId, otherMemberId)) {
+            mockMvc.perform(post("/api/v1/orders")
+                            .header("Authorization", customerToken(id, Instant.now()))
+                            .header("Idempotency-Key", key)
+                            .contentType(MediaType.APPLICATION_JSON).content(body))
+                    .andExpect(status().isCreated());
+        }
+        assertThat(fixtures.countOrdersByMember(memberId)).isEqualTo(1);
+        assertThat(fixtures.countOrdersByMember(otherMemberId)).isEqualTo(1);
+    }
+
+    private String customerToken(long id, Instant issuedAt) {
+        return "Bearer " + jwtAccessTokenService.encode(
+                new AuthUser(id, AuthUser.SubjectType.MEMBER, AuthUser.Role.CUSTOMER, schoolId, null), issuedAt);
+    }
+
+    private String validBody() throws Exception {
+        return objectMapper.writeValueAsString(Map.of(
+                "storeId", storeId,
+                "items", List.of(Map.of("menuId", menuItemId, "quantity", 1,
+                        "optionItemIds", List.of(sizeLOptionId))),
+                "withdrawalLimitAgreed", true));
+    }
+
 }

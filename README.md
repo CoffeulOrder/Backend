@@ -99,10 +99,29 @@ SOURCE db/seed/menu-seed.sql;
 - **MS-9 · MS-10** (`GET /stores/{storeId}/categories`, `GET /stores/{storeId}/menus`) — menu 모듈, 완전히 동작.
 - **MS-16** (`POST /orders`) — order 모듈. store.api(영업 상태) · menu.api(품절 · 옵션 · 가격) · member.api(계정 상태) · payment.api(결제창 정보)를 모듈 경계 그대로 호출해서 조립하는 구조를 보여주는 참조 구현.
   - **알려진 한계** (다음 사람이 이어받을 때 볼 것):
-    1. auth 모듈이 없어 `X-Member-Id` 헤더로 회원을 임시 식별한다. 실제로는 `auth.api.AuthUser`로 교체.
-    2. `payment` 테이블 행을 저장하지 않는다 — `merchant_pg`가 없어서(사업자 정보 미확정). 응답의 `payment` 블록은 `FakePaymentGatewayAdapter`가 계산만 해서 채운다.
-    3. Idempotency-Key 재요청 시 결제 정보를 다시 계산해서 돌려준다(영속화가 없어서) — 가짜 어댑터가 orderCode만으로 결정되는 순수 함수라 지금은 우연히 일관되지만, 실제 PG 붙으면 재요청은 저장된 값을 그대로 반환하도록 바꿔야 한다.
+    1. 인증은 `auth.api.AuthUser`로 받은 고객 Bearer 토큰을 사용한다. `X-Member-Id`는 회원 식별에 사용하지 않는다. 정지·탈퇴 계정은 기존 요청 재전송도 AUTH_005(403)로 거절한다.
+    2. 기본 가짜 어댑터는 payment 블록만 계산한다. dev 흐름을 명시적으로 켜면 FAKE 설정으로 payment 행을 저장한다. 실제 PG 저장/승인은 아직 별도 구현 대상이다.
+    3. 기본 가짜 어댑터는 재요청 시 동일 값을 계산한다. dev 영속화 모드는 첫 결제 시도 행을 재사용한다. 실제 PG 재시도·UNKNOWN 복구는 별도 구현한다.
   - 옵션 검증(`MenuSelectionValidator`)·가격 계산(`LinePricing`)은 DB·Spring 없이 도는 순수 로직 — `./mvnw test`로 지금 바로 돌아간다.
+
+## 개발용 주문 흐름 (2026-11-10)
+
+PG 심사·정보 전달 대기 중에도 고객 로그인 → 주문 생성 → 가짜 결제 확정 → 사장님 보드 → 수락·제조 → 픽업을 검증할 수 있다.
+로컬 Compose는 dev 프로필과 명시적 활성화 설정을 함께 사용한다. FAKE merchant_pg 시드·payment READY 저장을 추가했고, 기존 개발 DB도 dev-seed 재실행으로 설정을 보충한다.
+
+- 개발용 API: `POST /api/v1/dev/orders/{orderId}/confirm-payment`, 고객 Bearer와 `{pgOrderId}`. `simulated: true`를 반환하며 실제 결제를 발생시키지 않는다.
+- 기본 실행에서는 꺼져 있다. dev 프로필 + `coffeul.dev.payment-flow-enabled=true` + fake 게이트웨이가 필요하며, prod/production 프로필에서는 노출하지 않는다.
+- 주문 접수·결제 상태·KST 영업일 픽업번호·상태 이력을 한 트랜잭션에서 처리한다. 중복/동시 승인·계정 상태·만료·품절·발급 실패 롤백을 검증한다.
+- 실제 MS-27·PortOne 웹훅·취소/환불·앱 기기 연결은 아직 구현/검증하지 않았다.
+- API 순서·활성화·남은 작업은 [개발용 주문 흐름](docs/DEV_ORDER_FLOW.md)에 정리했다.
+
+## 작업 브랜치 변경 (2026-11-09)
+
+- 기준: `origin/develop` (`0979ab7`). 이 절의 변경은 로컬 `fix/ms16-auth-order-query`에 있으며 원격에 반영되지 않았다.
+- MS-16 주문 생성: `Authorization: Bearer <accessToken>`과 `Idempotency-Key`가 필요하다. 기존 요청 본문·201 생성·200 재요청 응답은 유지한다. 직원·사장님·관리자 토큰은 C003(403), 인증 실패는 C002(401)다.
+- MS-17·18: 기존 `feat/ms17-18-order-query`의 구현(`3253bce`)을 가져왔다. `GET /api/v1/orders?page=0&size=20`(size 1~50), `GET /api/v1/orders/{orderId}`. 고객 본인 주문만 조회하며 남의 주문과 없는 주문은 같은 OD005(404)로 응답한다.
+- 테스트 주문의 영업일은 KST 기준이며, 고정 시각으로 KST 자정 경계를 검증한다. 전체 테스트는 UTC JVM에서 실행한다.
+- 결제 PG·승인·취소/환불, CORS, 운영 배포와 새 상태값·닉네임·PIN 등 회의 대기 기능은 이번 변경 범위 밖이다.
 
 ## 기준 구현 (인증)
 

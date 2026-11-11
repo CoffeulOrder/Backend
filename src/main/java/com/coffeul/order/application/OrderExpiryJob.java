@@ -6,6 +6,7 @@ import com.coffeul.order.domain.Order;
 import com.coffeul.order.domain.OrderStatusHistory;
 import com.coffeul.order.infrastructure.OrderRepository;
 import com.coffeul.order.infrastructure.OrderStatusHistoryRepository;
+import com.coffeul.payment.api.PaymentPreparationApi;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,9 +22,8 @@ import java.util.List;
  * 결제 대기 만료 (rules.py JOBS: 1분마다, PENDING_PAYMENT · expires_at 지남 → EXPIRED + 이력 → OrderExpired).
  *
  * <p><b>알려진 한계</b>: 원본 조건은 "UNKNOWN 시도 없음 · 마지막 READY 시도 후 10분 지남"까지 포함하지만,
- * payment 모듈이 아직 결제 시도를 {@code payment} 테이블에 영속화하지 않는다 (PaymentPreparationApi 참고 —
- * merchant_pg 실데이터가 없어서). 그래서 지금은 이 두 조건이 항상 공진(vacuously true)이라 검사하지 않는다.
- * MS-27(결제 승인)이 실제 결제 시도를 저장하기 시작하면 이 조건을 마저 채운다.
+ * 실제 PG 연동은 아직 없다. dev 흐름에서는 FAKE 시도를 저장하며 만료 시 READY를 FAILED로 닫는다.
+ * 실제 MS-27을 구현할 때 UNKNOWN 결과 조회와 마지막 READY 유예 조건을 마저 채워야 한다.
  */
 @Component
 public class OrderExpiryJob {
@@ -37,6 +37,7 @@ public class OrderExpiryJob {
     private final OrderRepository orderRepository;
     private final OrderStatusHistoryRepository orderStatusHistoryRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final PaymentPreparationApi paymentPreparationApi;
     // expireOne을 건별 트랜잭션으로 나누려면 프록시를 거쳐 호출해야 한다 — 같은 객체 안에서 this.expireOne(...)로
     // 부르면 자기 호출이라 프록시(따라서 @Transactional)를 타지 않는다. @Lazy 자가 주입으로 프록시를 얻어 통해서 부른다.
     private final OrderExpiryJob self;
@@ -44,10 +45,12 @@ public class OrderExpiryJob {
     public OrderExpiryJob(OrderRepository orderRepository,
                            OrderStatusHistoryRepository orderStatusHistoryRepository,
                            ApplicationEventPublisher eventPublisher,
+                           PaymentPreparationApi paymentPreparationApi,
                            @Lazy OrderExpiryJob self) {
         this.orderRepository = orderRepository;
         this.orderStatusHistoryRepository = orderStatusHistoryRepository;
         this.eventPublisher = eventPublisher;
+        this.paymentPreparationApi = paymentPreparationApi;
         this.self = self;
     }
 
@@ -91,6 +94,7 @@ public class OrderExpiryJob {
             return false;
         }
         orderRepository.save(order);
+        paymentPreparationApi.expireReadyAttempts(orderId, now);
         orderStatusHistoryRepository.save(OrderStatusHistory.transitioned(
                 order.getId(), Order.STATUS_PENDING_PAYMENT, Order.STATUS_EXPIRED, ACTOR_SYSTEM, null, null));
         eventPublisher.publishEvent(new OrderExpiredEvent(order.getId(), order.getMemberId()));
