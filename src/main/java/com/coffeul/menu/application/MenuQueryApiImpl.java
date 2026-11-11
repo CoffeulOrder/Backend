@@ -3,32 +3,23 @@ package com.coffeul.menu.application;
 import com.coffeul.menu.api.MenuItemView;
 import com.coffeul.menu.api.MenuQueryApi;
 import com.coffeul.menu.domain.MenuItem;
-import com.coffeul.menu.domain.OptionGroup;
-import com.coffeul.menu.domain.OptionItem;
 import com.coffeul.menu.infrastructure.MenuItemRepository;
-import com.coffeul.menu.infrastructure.OptionGroupRepository;
-import com.coffeul.menu.infrastructure.OptionItemRepository;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @Component
 public class MenuQueryApiImpl implements MenuQueryApi {
 
     private final MenuItemRepository menuItemRepository;
-    private final OptionGroupRepository optionGroupRepository;
-    private final OptionItemRepository optionItemRepository;
+    private final MenuOptionReader menuOptionReader;
 
     public MenuQueryApiImpl(MenuItemRepository menuItemRepository,
-                             OptionGroupRepository optionGroupRepository,
-                             OptionItemRepository optionItemRepository) {
+                             MenuOptionReader menuOptionReader) {
         this.menuItemRepository = menuItemRepository;
-        this.optionGroupRepository = optionGroupRepository;
-        this.optionItemRepository = optionItemRepository;
+        this.menuOptionReader = menuOptionReader;
     }
 
     @Override
@@ -40,20 +31,17 @@ public class MenuQueryApiImpl implements MenuQueryApi {
     }
 
     private MenuItemView toView(MenuItem item) {
-        List<OptionGroup> groups = optionGroupRepository.findByMenuItemIdOrderBySortOrder(item.getId());
-        List<Long> groupIds = groups.stream().map(OptionGroup::getId).toList();
-        Map<Long, List<OptionItem>> optionsByGroup = groupIds.isEmpty()
-                ? Map.of()
-                : optionItemRepository.findByOptionGroupIdInOrderBySortOrder(groupIds).stream()
-                        .collect(Collectors.groupingBy(OptionItem::getOptionGroupId));
-
-        List<MenuItemView.OptionGroupView> groupViews = groups.stream()
-                .map(g -> new MenuItemView.OptionGroupView(
-                        g.getId(), g.getName(), g.isRequired(), g.getMinSelect(), g.getMaxSelect(),
-                        optionsByGroup.getOrDefault(g.getId(), List.of()).stream()
-                                .map(o -> new MenuItemView.OptionItemView(
-                                        o.getId(), o.getOptionGroupId(), o.getName(), o.getPriceDelta(), o.isSoldOut()))
-                                .toList()))
+        List<MenuItemView.OptionGroupView> groupViews = menuOptionReader.findGroups(item.getId()).stream()
+                .map(entry -> {
+                    var group = entry.group();
+                    return new MenuItemView.OptionGroupView(
+                            group.getId(), group.getName(), group.isRequired(), group.getMinSelect(), group.getMaxSelect(),
+                            entry.options().stream()
+                                    .map(option -> new MenuItemView.OptionItemView(
+                                            option.getId(), option.getOptionGroupId(), option.getName(),
+                                            option.getPriceDelta(), option.isSoldOut()))
+                                    .toList());
+                })
                 .toList();
 
         return new MenuItemView(item.getId(), item.getStoreId(), item.getName(), item.getBasePrice(),
