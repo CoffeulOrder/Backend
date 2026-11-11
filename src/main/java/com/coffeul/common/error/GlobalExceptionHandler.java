@@ -8,6 +8,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -36,6 +38,12 @@ public class GlobalExceptionHandler {
                 .toList();
         return ResponseEntity.status(CommonErrorCode.VALIDATION_FAILED.status())
                 .body(ApiResponse.error(CommonErrorCode.VALIDATION_FAILED, CommonErrorCode.VALIDATION_FAILED.message(), errors));
+    }
+
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleNotFound() {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(CommonErrorCode.NOT_FOUND));
     }
 
     @ExceptionHandler(Exception.class)
