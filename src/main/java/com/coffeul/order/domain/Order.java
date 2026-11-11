@@ -96,6 +96,20 @@ public class Order {
     @Column(name = "expired_at")
     private Instant expiredAt;
 
+    /** 고객 취소(MS-19) · 매장 거절(MS-23)이 채우는 값. 지금은 조회(MS-17 · MS-18)만 하므로 읽기 전용이다. */
+    @Column(name = "canceled_at", insertable = false, updatable = false)
+    private Instant canceledAt;
+
+    @Column(name = "rejected_at", insertable = false, updatable = false)
+    private Instant rejectedAt;
+
+    @Column(name = "reject_reason_code", length = 30, insertable = false, updatable = false)
+    private String rejectReasonCode;
+
+    /** DB 기본값(CURRENT_TIMESTAMP)이 채운다. 내 주문 목록의 정렬 기준(idx_orders_member_created). */
+    @Column(name = "created_at", insertable = false, updatable = false)
+    private Instant createdAt;
+
     protected Order() {
     }
 
@@ -198,6 +212,31 @@ public class Order {
 
     public Instant getExpiresAt() {
         return expiresAt;
+    }
+
+    public Instant getCanceledAt() {
+        return canceledAt;
+    }
+
+    public Instant getRejectedAt() {
+        return rejectedAt;
+    }
+
+    public String getRejectReasonCode() {
+        return rejectReasonCode;
+    }
+
+    public Instant getCreatedAt() {
+        return createdAt;
+    }
+
+    /** 결제 확인 후 접수. 주문/결제/픽업번호/이력은 호출자의 한 트랜잭션에서 확정한다. */
+    public void place(Instant now, LocalDate businessDate, short pickupNo) {
+        requireStatus(STATUS_PENDING_PAYMENT);
+        this.status = STATUS_REQUESTED;
+        this.placedAt = now;
+        this.businessDate = businessDate;
+        this.pickupNo = pickupNo;
     }
 
     /** MS-22 수락: REQUESTED → ACCEPTED. */

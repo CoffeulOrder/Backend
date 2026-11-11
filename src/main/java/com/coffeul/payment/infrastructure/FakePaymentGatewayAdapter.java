@@ -19,7 +19,7 @@ public class FakePaymentGatewayAdapter implements PaymentPreparationApi {
     }
 
     @Override
-    public PaymentAttemptView prepareFirstAttempt(String orderCode, int amount) {
+    public PaymentAttemptView prepareFirstAttempt(Long orderId, Long storeId, String orderCode, int amount) {
         if (!"fake".equals(gateway)) {
             throw new UnsupportedOperationException(
                     "PAYMENT_GATEWAY=" + gateway + " 어댑터는 아직 없음 — PG사 확정 후 구현");

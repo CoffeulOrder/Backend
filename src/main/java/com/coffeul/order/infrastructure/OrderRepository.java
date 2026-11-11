@@ -2,6 +2,8 @@ package com.coffeul.order.infrastructure;
 
 import com.coffeul.order.domain.Order;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -39,4 +41,13 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     /** MS-21: 영업일 하루치 전체 주문. */
     List<Order> findByStoreIdAndBusinessDate(Long storeId, LocalDate businessDate);
+
+    /**
+     * MS-17: 내 주문 목록. 만료된 결제 대기는 뺀다. idx_orders_member_created를 타도록 정렬은 호출하는 쪽이
+     * (created_at DESC, id DESC)로 넘긴다. Slice라 count 쿼리 없이 hasNext만 알 수 있다.
+     */
+    Slice<Order> findByMemberIdAndStatusNot(Long memberId, String excludedStatus, Pageable pageable);
+
+    /** MS-18 aheadCount: 같은 매장에서 나보다 먼저 접수된(placed_at이 이른) 대기 주문 수. */
+    long countByStoreIdAndStatusInAndPlacedAtLessThan(Long storeId, Collection<String> statuses, Instant placedAt);
 }

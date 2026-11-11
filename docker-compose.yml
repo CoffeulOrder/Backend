@@ -37,6 +37,8 @@ services:
       DB_PASSWORD: coffeul-dev
       # 결제는 가짜 게이트웨이, 인증 메일은 실제로 보내지 않고 서버 로그에 코드를 찍는다.
       PAYMENT_GATEWAY: fake
+      # dev 전용 가짜 결제 확정. dev + 명시적 활성화 + fake 게이트웨이가 모두 필요하다.
+      SPRING_APPLICATION_JSON: '{"coffeul.dev.payment-flow-enabled":true}'
       MAIL_PROVIDER: log
     ports:
       - "8080:8080"

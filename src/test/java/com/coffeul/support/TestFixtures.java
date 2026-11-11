@@ -10,6 +10,8 @@ import java.sql.PreparedStatement;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.Clock;
+import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.LocalDate;
 import java.time.LocalTime;
@@ -25,11 +27,17 @@ public class TestFixtures {
     private static final BCryptPasswordEncoder PASSWORD_ENCODER = new BCryptPasswordEncoder();
 
     private final JdbcTemplate jdbc;
+    private final Clock businessClock;
     // uk_orders_pickup_no(store_id, business_date, pickup_no) 충돌 방지 — 테스트마다 새 인스턴스라 1부터 시작해도 안전.
     private final AtomicInteger pickupNoSequence = new AtomicInteger(1);
 
     public TestFixtures(JdbcTemplate jdbc) {
+        this(jdbc, Clock.system(ZoneId.of("Asia/Seoul")));
+    }
+
+    public TestFixtures(JdbcTemplate jdbc, Clock businessClock) {
         this.jdbc = jdbc;
+        this.businessClock = businessClock;
     }
 
     public long createSchool(String name) {
@@ -224,7 +232,7 @@ public class TestFixtures {
     public long createOrder(long memberId, long storeId, long schoolId, String status) {
         boolean placed = !"PENDING_PAYMENT".equals(status) && !"EXPIRED".equals(status);
         String rejectReasonCode = "REJECTED".equals(status) ? "OTHER" : null;
-        Instant now = Instant.now();
+        Instant now = businessClock.instant();
 
         return insert(
                 "INSERT INTO `orders` (`order_code`, `member_id`, `store_id`, `school_id`, `status`, " +
@@ -234,7 +242,7 @@ public class TestFixtures {
                         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 "CF-TEST-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase(),
                 memberId, storeId, schoolId, status,
-                placed ? LocalDate.now() : null,
+                placed ? LocalDate.ofInstant(now, businessClock.getZone()) : null,
                 placed ? pickupNoSequence.getAndIncrement() : null,
                 4000, 0, 4000,
                 rejectReasonCode,
@@ -255,11 +263,43 @@ public class TestFixtures {
     public void promoteOrderStatus(long orderId, String status) {
         boolean placed = !"PENDING_PAYMENT".equals(status) && !"EXPIRED".equals(status);
         String rejectReasonCode = "REJECTED".equals(status) ? "OTHER" : null;
-        Instant now = Instant.now();
+        Instant now = businessClock.instant();
         jdbc.update("UPDATE `orders` SET `status` = ?, `business_date` = ?, `pickup_no` = ?, `placed_at` = ?, " +
                         "`reject_reason_code` = ? WHERE `id` = ?",
-                status, placed ? LocalDate.now() : null, placed ? pickupNoSequence.getAndIncrement() : null,
+                status, placed ? LocalDate.ofInstant(now, businessClock.getZone()) : null, placed ? pickupNoSequence.getAndIncrement() : null,
                 placed ? now : null, rejectReasonCode, orderId);
+    }
+
+    /**
+     * 주문 항목(order_line)을 직접 넣는다. 조회 API(MS-17 · MS-18) 테스트가 주문 생성 API(MS-16)에 기대지 않게 하려는 것이다 —
+     * MS-16은 인증 방식이 바뀔 예정이라 거기에 묶이면 무관한 테스트가 같이 깨진다.
+     */
+    public long createOrderLine(long orderId, long menuItemId, String menuName, int unitPrice, int quantity) {
+        return insert(
+                "INSERT INTO `order_line` (`order_id`, `menu_item_id`, `menu_name_snapshot`, `base_price_snapshot`, " +
+                        "`unit_price`, `quantity`, `line_amount`) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                orderId, menuItemId, menuName, unitPrice, unitPrice, quantity, unitPrice * quantity);
+    }
+
+    public long createOrderLineOption(long orderLineId, long optionItemId, String groupName, String itemName) {
+        return insert(
+                "INSERT INTO `order_line_option` (`order_line_id`, `option_item_id`, `option_group_name_snapshot`, " +
+                        "`option_item_name_snapshot`, `price_delta_snapshot`) VALUES (?, ?, ?, ?, 0)",
+                orderLineId, optionItemId, groupName, itemName);
+    }
+
+    /** 목록 정렬(created_at)과 대기 순서(placed_at)를 테스트에서 명시적으로 잡는다. */
+    public void setOrderTimes(long orderId, Instant createdAt, Instant placedAt) {
+        jdbc.update("UPDATE `orders` SET `created_at` = ?, `placed_at` = ? WHERE `id` = ?",
+                createdAt, placedAt, orderId);
+    }
+
+    /** 취소 · 거절 시각처럼 MS-19 · MS-23이 채울 값을 조회 테스트에서 미리 넣는다. column은 아래 둘만 허용한다. */
+    public void setOrderEventTime(long orderId, String column, Instant at) {
+        if (!"canceled_at".equals(column) && !"rejected_at".equals(column)) {
+            throw new IllegalArgumentException("허용하지 않는 컬럼: " + column);
+        }
+        jdbc.update("UPDATE `orders` SET `" + column + "` = ? WHERE `id` = ?", at, orderId);
     }
 
     private long insert(String sql, Object... args) {
