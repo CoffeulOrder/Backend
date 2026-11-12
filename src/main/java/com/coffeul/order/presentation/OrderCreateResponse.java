@@ -1,5 +1,8 @@
 package com.coffeul.order.presentation;
 
+import com.coffeul.payment.api.PaymentAttemptView;
+import com.fasterxml.jackson.annotation.JsonInclude;
+
 import java.time.OffsetDateTime;
 import java.util.List;
 
@@ -18,8 +21,8 @@ public record OrderCreateResponse(
     public record LineItem(String menuName, List<String> options, int unitPrice, int quantity, int lineAmount) {
     }
 
-    /** PG사 확정 전까지는 가짜 어댑터 값 — rules.py PAYMENT_RULES: "PG사 확정 전에는 가짜 어댑터로 전 흐름을 완성한다." */
     public record PaymentInfo(int attemptNo, String pgProvider, String pgOrderId, String orderName,
-                               int amount, String clientKey) {
+                               int amount, String clientKey,
+                               @JsonInclude(JsonInclude.Include.NON_NULL) PaymentAttemptView.PortOneCheckout portOne) {
     }
 }

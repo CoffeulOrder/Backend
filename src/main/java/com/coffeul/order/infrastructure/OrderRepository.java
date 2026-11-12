@@ -19,6 +19,14 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     Optional<Order> findByMemberIdAndIdempotencyKey(Long memberId, String idempotencyKey);
 
+    interface PaymentConfirmationState {
+        String getStatus();
+
+        Instant getExpiresAt();
+    }
+
+    Optional<PaymentConfirmationState> findPaymentConfirmationStateByIdAndMemberId(Long id, Long memberId);
+
     long countByMemberIdAndStatusNotIn(Long memberId, Collection<String> excludedStatuses);
 
     long countByStoreIdAndStatusIn(Long storeId, Collection<String> includedStatuses);
