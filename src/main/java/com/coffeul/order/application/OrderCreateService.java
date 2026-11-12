@@ -39,7 +39,7 @@ import java.util.Optional;
 /**
  * MS-16(주문 생성) 기준 구현.
  * 기본 가짜 어댑터는 응답만 계산한다. dev 결제 흐름을 명시적으로 켜면 가짜 결제 시도를 함께 저장한다.
- * memberId는 컨트롤러에서 검증한 고객 토큰의 주체다. 실제 PG 연동은 별도 구현 대상이다.
+ * memberId는 컨트롤러에서 검증한 고객 토큰의 주체다.
  */
 @Service
 public class OrderCreateService {
@@ -137,7 +137,7 @@ public class OrderCreateService {
                 OffsetDateTime.ofInstant(expiresAt, ZoneOffset.of("+09:00")), echoLines,
                 order.getSubtotalAmount(), order.getDiscountAmount(), order.getTotalAmount(),
                 new OrderCreateResponse.PaymentInfo(payment.attemptNo(), payment.pgProvider(), payment.pgOrderId(),
-                        orderName, order.getTotalAmount(), payment.clientKey()));
+                        orderName, order.getTotalAmount(), payment.clientKey(), payment.portOne()));
         return new Result(response, true);
     }
 
@@ -216,7 +216,7 @@ public class OrderCreateService {
                 .toList();
 
         // 준비 포트가 같은 첫 시도를 반환한다. dev 영속화 모드는 기존 행을 재사용한다.
-        PaymentAttemptView payment = paymentPreparationApi.prepareFirstAttempt(
+        PaymentAttemptView payment = paymentPreparationApi.replayFirstAttempt(
                 order.getId(), order.getStoreId(), order.getOrderCode(), order.getTotalAmount());
         String orderName = lines.isEmpty() ? "" : lines.size() == 1
                 ? lines.get(0).getMenuNameSnapshot()
@@ -226,6 +226,6 @@ public class OrderCreateService {
                 OffsetDateTime.ofInstant(order.getExpiresAt(), ZoneOffset.of("+09:00")), echoLines,
                 order.getSubtotalAmount(), order.getDiscountAmount(), order.getTotalAmount(),
                 new OrderCreateResponse.PaymentInfo(payment.attemptNo(), payment.pgProvider(), payment.pgOrderId(),
-                        orderName, order.getTotalAmount(), payment.clientKey()));
+                        orderName, order.getTotalAmount(), payment.clientKey(), payment.portOne()));
     }
 }

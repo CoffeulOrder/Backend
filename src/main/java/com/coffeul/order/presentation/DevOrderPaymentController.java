@@ -17,6 +17,7 @@ import java.time.Instant;
 @RestController
 @Profile("dev & !prod & !production")
 @ConditionalOnProperty(name = "coffeul.dev.payment-flow-enabled", havingValue = "true")
+@ConditionalOnProperty(name = "coffeul.payment.gateway", havingValue = "fake", matchIfMissing = true)
 public class DevOrderPaymentController {
     private final DevOrderPaymentService service;
     public DevOrderPaymentController(DevOrderPaymentService service) { this.service = service; }

@@ -16,6 +16,7 @@ import java.time.Instant;
 @Primary
 @Profile("dev & !prod & !production")
 @ConditionalOnProperty(name = "coffeul.dev.payment-flow-enabled", havingValue = "true")
+@ConditionalOnProperty(name = "coffeul.payment.gateway", havingValue = "fake", matchIfMissing = true)
 public class PersistentFakePaymentService implements PaymentPreparationApi, FakePaymentApi {
     private final FakePaymentRepository repository;
     private final FakeMerchantConfigPort configPort;
@@ -74,7 +75,7 @@ public class PersistentFakePaymentService implements PaymentPreparationApi, Fake
     }
 
     private void requireFakeGateway() {
-        if (!"fake".equals(gateway)) {
+        if (!"fake".equalsIgnoreCase(gateway)) {
             throw new BusinessException(PaymentErrorCode.SETUP_NOT_READY);
         }
     }

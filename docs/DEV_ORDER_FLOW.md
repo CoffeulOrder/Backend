@@ -1,7 +1,7 @@
 # 개발용 주문·가짜 결제 흐름
 
 2026-11-10. PG 심사·계약 정보를 기다리는 동안 기존 BE 코드를 이어서 검증하는 용도다.
-실제 카드·간편결제·PortOne 호출은 없으며, 실결제 승인 API(MS-27)를 구현 완료한 것으로 세지 않는다.
+이 절의 개발용 흐름은 카드·간편결제·PortOne을 호출하지 않는다. PortOne 연동 개발은 아래 MS-16·27 절에 정리한다.
 
 ## 활성화
 
@@ -14,7 +14,7 @@ coffeul.payment.gateway=fake
 
 - 세 조건(dev 프로필·명시적 활성화·fake 게이트웨이)이 필요하다. `prod` 또는 `production`이 함께 활성화되면 개발용 컨트롤러와 서비스는 등록되지 않는다.
 - 기본 실행은 활성화 값이 없으므로 기존 응답 계산용 가짜 어댑터를 유지한다.
-- dev 흐름을 켜고 실제 게이트웨이 이름을 설정하면 가짜 성공을 반환하지 않고 PY006(503)으로 거절한다.
+- PortOne 게이트웨이를 선택하면 개발용 가짜 결제 확정 API는 등록되지 않는다.
 - 시드는 개발용 사업자번호 `9999999999`에 FAKE 설정만 추가한다. 기존 개발 DB도 `dev-seed`를 다시 실행하면 이 설정을 보충한다. 기존 거래/테이블을 지우지 않는다.
 - 진짜 PG 정보·시크릿은 이 문서나 테스트 시드에 넣지 않는다.
 
@@ -68,10 +68,30 @@ coffeul.payment.gateway=fake
 ## 아직 남은 작업
 
 - 실제 KG이니시스/PortOne 계약·테스트/실결제 채널·심사 결과 확인, SDK/WebView 방식·필드 계약 확정.
-- 실제 PG 조회·웹훅 서명·멱등 확정·UNKNOWN 복구·결제 재시도·취소/거절/환불. 개발용 API를 그대로 실결제 API로 승격하지 않는다.
-- MS-11 메뉴 상세·옵션 HTTP API가 없어, 옵션이 있는 메뉴의 옵션 ID를 앱이 조회하는 연결은 아직 남아 있다. 현재 통합 테스트는 테스트 데이터의 실제 ID로 요청한다.
+- 테스트 채널에서 실제 PG 조회·확정과 서명된 웹훅 수신을 검증한다. 만료된 결제의 대사·복구, 결제 재시도, 취소/거절/환불은 후속 작업이다.
+- 고객 앱의 메뉴 상세·옵션 조회는 `GET /api/v1/stores/{storeId}/menus/{menuId}`와 연동해 기기에서 검증한다.
 - 실제 고객 앱·사장님 앱의 서버 연결과 기기 검증, CORS, 푸시 실제 발송.
 - 기본 주문 상태는 기존 ACCEPTED/MAKING 분리를 유지한다. 닉네임·PIN·미수령·REFUNDED·관리자 웹 정책은 별도 합의 후 반영한다.
+
+## PortOne V2 KG이니시스 MS-16·27
+
+개발 검증 환경에서 `coffeul.payment.gateway=portone`을 선택한다. `coffeul.payment.portone.api-secret`에는 해당 PortOne 계정의 V2 API Secret을 서버에만 주입한다. 현재 어댑터는 서버 인스턴스당 한 PortOne 계정의 Secret을 사용한다.
+
+매장에 연결된 `merchant_pg`에 `pg_provider=INICIS_V2`, `status=ACTIVE`, `portone_store_id`(PortOne 상점 ID), `client_key`(결제창 채널 키)가 있어야 한다. `mid`는 KG이니시스 식별자다. V3는 상점 ID와 결제 시도에 보관할 상점·채널 컬럼을 추가한다.
+
+1. `POST /api/v1/orders`에 고객 Bearer와 `Idempotency-Key`를 보낸다. `payment.portOne`의 `storeId`, `channelKey`, `paymentId`, `currency`와 `payment.orderName`, `payment.amount`로 결제창을 연다. 구매자 이름은 고객 앱에서 전달한다. 같은 주문 생성 요청은 저장된 첫 결제 시도의 정보를 반환한다.
+2. 결제창 복귀 후 고객 Bearer로 `POST /api/v1/payments/confirm`에 `{ "orderId": 1, "paymentId": "<결제 식별자>" }`를 보낸다. `orderId`는 주문 생성 응답값이다. 서버는 PortOne에서 `PAID` 여부, 결제 ID·상점·채널·PG·통화와 저장된 주문 금액을 확인한다.
+3. 결제 승인·주문 접수·픽업번호·이력을 한 트랜잭션으로 저장한다. 확인 요청을 다시 보내면 이미 접수된 주문의 현재 상태를 반환한다.
+
+PortOne 조회 지연·오류는 `PY010`, 결제 미확인은 `PY009`, 결제 식별 정보 불일치는 `PY011`, 금액 불일치는 `PY001`로 응답한다. 이미 PortOne에서 결제된 주문도 로컬 주문이 만료됐거나 접수 불가하면 주문을 접수하지 않는다. PG 결제의 취소·환불 및 결과 복구는 후속 구현이므로, 테스트 채널 검증과 복구 처리를 운영 결제 오픈 전에 완료한다.
+
+### PortOne V2 웹훅
+
+`coffeul.payment.gateway=portone` 환경에서 `coffeul.payment.portone.webhook-enabled=true`로 수신 경로를 켜고, 콘솔에서 발급한 웹훅 시크릿을 `coffeul.payment.portone.webhook-secret`에 서버 설정으로 주입한다. 테스트 모드에서 PortOne이 접근할 수 있는 HTTPS 주소의 `POST /api/v1/payments/webhooks/portone`을 등록하고 V2의 `2024-04-25` 본문 형식을 사용한다. [PortOne 웹훅 연동](https://developers.portone.io/opi/ko/integration/webhook/readme-v2?v=v2)
+
+- 요청 본문 원본과 `webhook-id`, `webhook-timestamp`, `webhook-signature`로 서명을 검사한다. 발송 시각이 서버 시각과 5분 넘게 차이 나거나 서명이 유효하지 않으면 `401`을 반환한다.
+- `Transaction.Paid`가 오면 저장한 상점·결제 식별자를 대조하고 PortOne API에서 조회한다. 앱 확인 API와 같은 트랜잭션으로 주문을 접수한다. 중복 알림과 앱 동시 요청은 접수 이력·픽업번호를 한 번만 만든다.
+- 처리 완료, 이미 처리한 결제, 등록되지 않은 결제 식별자, 그 외 이벤트는 `204`로 응답한다. PG 일시 오류는 `503`으로 응답하며 주문은 다음 전달에서 다시 확인할 수 있다. 만료된 주문은 접수를 차단하며, 이미 결제된 만료 주문의 대사·환불은 후속이다.
 
 ## 실행 검증
 
@@ -85,7 +105,7 @@ Colima 사용 시 JAVA_HOME(Java21), DOCKER_HOST, TESTCONTAINERS_DOCKER_SOCKET_O
 `DevOrderFlowIntegrationTest`는 실제 로그인·주문 생성·승인·사장님 처리·픽업 API를 호출하며, 주문 상태를 테스트 픽스처로 강제 승격하지 않는다.
 `DevPaymentActivationTest`는 dev opt-in·prod 제외 조건을, `PersistentFakePaymentServiceTest`는 실제 게이트웨이 모드에서 가짜 승인이 막히는지 검증한다.
 
-Git 상태는 로컬 개발 중이며 아직 커밋·push·PR·운영 배포를 하지 않았다. 기존 MS-16 인증·MS-17/18 변경도 같은 로컬 작업에 포함되어 있다.
+아래 결과는 초기 개발용 가짜 결제의 검증 기록이다.
 
 최종 검증(2026-11-10): 전체 180건 통과, 실패·오류·스킵 0. MySQL 8.4/UTC JVM, 모듈 경계 검사 포함.
 `docker compose config --quiet`, `sh -n docker/dev-seed/run.sh`, `git diff --check`도 통과했다.
