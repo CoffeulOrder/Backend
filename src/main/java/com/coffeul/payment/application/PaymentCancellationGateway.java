@@ -45,7 +45,7 @@ public class PaymentCancellationGateway {
         }
         String requester = switch (claim.requestedByType()) {
             case "CUSTOMER" -> "CUSTOMER";
-            case "STAFF" -> "ADMIN";
+            case "STAFF", "SYSTEM" -> "ADMIN";
             case null, default -> throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
         };
         if (claim.reason() == null || claim.reason().isBlank() || claim.reason().length() > 200) {

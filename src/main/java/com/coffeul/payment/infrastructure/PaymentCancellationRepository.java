@@ -62,7 +62,8 @@ public class PaymentCancellationRepository {
                 WHERE c.status = 'REQUESTED' AND (c.next_retry_at IS NULL OR c.next_retry_at <= ?)
                     AND p.pg_provider = ? AND p.status IN ('APPROVED', 'CANCELED')
                     AND ((o.status = 'CANCELED' AND c.requested_by_type = 'CUSTOMER')
-                        OR (o.status = 'REJECTED' AND c.requested_by_type = 'STAFF'))
+                        OR (o.status = 'REJECTED' AND c.requested_by_type = 'STAFF')
+                        OR (o.status = 'EXPIRED' AND c.requested_by_type = 'SYSTEM'))
                 ORDER BY c.id LIMIT ?
                 """, (rs, row) -> rs.getLong(1), utc(now), provider, limit);
     }
@@ -76,7 +77,8 @@ public class PaymentCancellationRepository {
                     AND (c.next_retry_at IS NULL OR c.next_retry_at <= ?)
                     AND p.pg_provider = ? AND p.status IN ('APPROVED', 'CANCELED')
                     AND ((o.status = 'CANCELED' AND c.requested_by_type = 'CUSTOMER')
-                        OR (o.status = 'REJECTED' AND c.requested_by_type = 'STAFF'))
+                        OR (o.status = 'REJECTED' AND c.requested_by_type = 'STAFF')
+                        OR (o.status = 'EXPIRED' AND c.requested_by_type = 'SYSTEM'))
                 """, utc(leaseUntil), id, utc(now), provider);
         if (updated == 0) {
             return Optional.empty();

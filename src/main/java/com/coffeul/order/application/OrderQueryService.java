@@ -112,6 +112,7 @@ public class OrderQueryService {
         boolean cancelable = Order.STATUS_REQUESTED.equals(order.getStatus());
 
         String refundStatus = Order.STATUS_CANCELED.equals(order.getStatus()) || Order.STATUS_REJECTED.equals(order.getStatus())
+                || Order.STATUS_EXPIRED.equals(order.getStatus())
                 ? cancellations.findByOrderId(orderId).map(PaymentCancellationApi.Cancellation::status).orElse(null)
                 : null;
         return new Detail(order, storeNameOf(order.getStoreId()), aheadCount, cancelable, linesOf(order.getId()), refundStatus);
