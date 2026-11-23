@@ -56,6 +56,8 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      */
     Slice<Order> findByMemberIdAndStatusNot(Long memberId, String excludedStatus, Pageable pageable);
 
+    Slice<Order> findByMemberIdAndStatusIn(Long memberId, Collection<String> statuses, Pageable pageable);
+
     /** MS-18 aheadCount: 같은 매장에서 나보다 먼저 접수된(placed_at이 이른) 대기 주문 수. */
     long countByStoreIdAndStatusInAndPlacedAtLessThan(Long storeId, Collection<String> statuses, Instant placedAt);
 }
