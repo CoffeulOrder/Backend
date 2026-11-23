@@ -74,7 +74,7 @@ public class OrderQueryController {
                 new OrderDetailResponse.Store(order.getStoreId(), detail.storeName()), order.getPickupNo(),
                 detail.aheadCount(), detail.cancelable(), items,
                 order.getSubtotalAmount(), order.getDiscountAmount(), order.getTotalAmount(),
-                order.getRequestMemo(), order.getRejectReasonCode(), timeline));
+                order.getRequestMemo(), order.getRejectReasonCode(), timeline, detail.refundStatus()));
     }
 
     /**

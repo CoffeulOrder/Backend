@@ -96,8 +96,8 @@ public class Order {
     @Column(name = "expired_at")
     private Instant expiredAt;
 
-    /** 고객 취소(MS-19) · 매장 거절(MS-23)이 채우는 값. 지금은 조회(MS-17 · MS-18)만 하므로 읽기 전용이다. */
-    @Column(name = "canceled_at", insertable = false, updatable = false)
+    /** 고객 취소(MS-19) 시 기록하는 시각. */
+    @Column(name = "canceled_at")
     private Instant canceledAt;
 
     @Column(name = "rejected_at", insertable = false, updatable = false)
@@ -244,6 +244,13 @@ public class Order {
         requireStatus(STATUS_REQUESTED);
         status = STATUS_ACCEPTED;
         acceptedAt = now;
+    }
+
+    /** MS-19 고객 취소: 매장이 수락하기 전 REQUESTED에서만 취소한다. */
+    public void cancel(Instant now) {
+        requireStatus(STATUS_REQUESTED);
+        status = STATUS_CANCELED;
+        canceledAt = now;
     }
 
     /** MS-24 제조 시작: ACCEPTED → MAKING. */

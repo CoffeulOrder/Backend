@@ -7,7 +7,7 @@ import java.util.List;
 public record OrderDetailResponse(Long orderId, String orderCode, String status, Store store, Short pickupNo,
                                    Long aheadCount, boolean cancelable, List<Line> items,
                                    int subtotalAmount, int discountAmount, int totalAmount,
-                                   String requestMemo, String rejectReason, Timeline timeline) {
+                                   String requestMemo, String rejectReason, Timeline timeline, String refundStatus) {
 
     public record Store(Long storeId, String name) {
     }
