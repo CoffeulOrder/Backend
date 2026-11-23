@@ -6,6 +6,8 @@ import com.coffeul.auth.infrastructure.JwtAccessTokenService;
 import com.coffeul.support.TestFixtures;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.web.servlet.MockMvc;
@@ -13,8 +15,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.UUID;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.endsWith;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -176,6 +180,108 @@ class OrderQueryIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("C002"));
         mockMvc.perform(get("/api/v1/orders").header("Authorization", staffToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("C003"));
+    }
+
+    @Test
+    void 기본_목록과_ALL_필터는_만료만_제외한_같은_상태를_보여준다() throws Exception {
+        for (String orderStatus : List.of("PENDING_PAYMENT", "REQUESTED", "ACCEPTED", "MAKING", "READY",
+                "COMPLETED", "CANCELED", "REJECTED", "EXPIRED")) {
+            orderWithLine(memberId, storeId, orderStatus, "아메리카노");
+        }
+        orderWithLine(otherMemberId, storeId, "COMPLETED", "아메리카노");
+
+        for (String path : List.of("/api/v1/orders", "/api/v1/orders?filter=ALL")) {
+            mockMvc.perform(get(path).header("Authorization", customerAuth))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.data.content[*].status", containsInAnyOrder(
+                            "PENDING_PAYMENT", "REQUESTED", "ACCEPTED", "MAKING", "READY",
+                            "COMPLETED", "CANCELED", "REJECTED")))
+                    .andExpect(jsonPath("$.data.hasNext").value(false));
+        }
+    }
+
+    @Test
+    void ACTIVE는_내_진행중_주문만_매장에_관계없이_보여준다() throws Exception {
+        for (String orderStatus : List.of("REQUESTED", "ACCEPTED", "MAKING", "PENDING_PAYMENT",
+                "EXPIRED", "COMPLETED", "CANCELED", "REJECTED")) {
+            orderWithLine(memberId, storeId, orderStatus, "아메리카노");
+        }
+        orderWithLine(memberId, otherStoreId, "READY", "아메리카노");
+        orderWithLine(otherMemberId, storeId, "REQUESTED", "아메리카노");
+
+        mockMvc.perform(get("/api/v1/orders?filter=ACTIVE").header("Authorization", customerAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content[*].status",
+                        containsInAnyOrder("REQUESTED", "ACCEPTED", "MAKING", "READY")))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    void HISTORY는_필터링_후_같은_생성시각도_안정적으로_페이지를_나눈다() throws Exception {
+        Instant base = Instant.now().truncatedTo(ChronoUnit.SECONDS);
+        long canceled = orderWithLine(memberId, storeId, "CANCELED", "아메리카노");
+        long rejected = orderWithLine(memberId, storeId, "REJECTED", "아메리카노");
+        long completed = orderWithLine(memberId, storeId, "COMPLETED", "아메리카노");
+        for (long orderId : List.of(canceled, rejected, completed)) {
+            fixtures.setOrderTimes(orderId, base, base);
+        }
+        for (String orderStatus : List.of("PENDING_PAYMENT", "EXPIRED")) {
+            long orderId = orderWithLine(memberId, storeId, orderStatus, "아메리카노");
+            fixtures.setOrderTimes(orderId, base.plusSeconds(10), null);
+        }
+        long ready = orderWithLine(memberId, storeId, "READY", "아메리카노");
+        fixtures.setOrderTimes(ready, base.plusSeconds(10), base.plusSeconds(10));
+        long otherOrder = orderWithLine(otherMemberId, storeId, "COMPLETED", "아메리카노");
+        fixtures.setOrderTimes(otherOrder, base.plusSeconds(10), base.plusSeconds(10));
+
+        mockMvc.perform(get("/api/v1/orders?filter=HISTORY&page=0&size=2").header("Authorization", customerAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(2))
+                .andExpect(jsonPath("$.data.content[0].orderId").value(completed))
+                .andExpect(jsonPath("$.data.content[1].orderId").value(rejected))
+                .andExpect(jsonPath("$.data.page").value(0))
+                .andExpect(jsonPath("$.data.size").value(2))
+                .andExpect(jsonPath("$.data.hasNext").value(true));
+        mockMvc.perform(get("/api/v1/orders?filter=HISTORY&page=1&size=2").header("Authorization", customerAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content.length()").value(1))
+                .andExpect(jsonPath("$.data.content[0].orderId").value(canceled))
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+        mockMvc.perform(get("/api/v1/orders?filter=HISTORY&page=2&size=2").header("Authorization", customerAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content").isEmpty())
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @Test
+    void 필터에_해당하는_내_주문이_없으면_빈_목록이다() throws Exception {
+        orderWithLine(memberId, storeId, "COMPLETED", "아메리카노");
+        orderWithLine(otherMemberId, storeId, "REQUESTED", "아메리카노");
+
+        mockMvc.perform(get("/api/v1/orders?filter=ACTIVE").header("Authorization", customerAuth))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.content").isEmpty())
+                .andExpect(jsonPath("$.data.hasNext").value(false));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"UNKNOWN", "", "active", " ACTIVE "})
+    void 잘못된_필터는_C001과_filter_필드_오류를_반환한다(String filter) throws Exception {
+        mockMvc.perform(get("/api/v1/orders").param("filter", filter).header("Authorization", customerAuth))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"))
+                .andExpect(jsonPath("$.errors[0].field").value("filter"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"ACTIVE", "HISTORY"})
+    void 필터를_사용해도_고객_인증과_권한을_검사한다(String filter) throws Exception {
+        mockMvc.perform(get("/api/v1/orders").param("filter", filter))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("C002"));
+        mockMvc.perform(get("/api/v1/orders").param("filter", filter).header("Authorization", staffToken()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("C003"));
     }

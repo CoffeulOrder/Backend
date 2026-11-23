@@ -5,7 +5,10 @@ import com.coffeul.common.error.BusinessException;
 import com.coffeul.common.error.CommonErrorCode;
 import com.coffeul.common.response.ApiResponse;
 import com.coffeul.order.application.OrderQueryService;
+import com.coffeul.order.application.OrderQueryService.ListFilter;
 import com.coffeul.order.domain.Order;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -36,11 +39,14 @@ public class OrderQueryController {
     @GetMapping("/api/v1/orders")
     public ApiResponse<OrderListResponse> list(AuthUser authUser,
                                                 @RequestParam(defaultValue = "0") int page,
-                                                @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size) {
+                                                @RequestParam(defaultValue = "" + DEFAULT_PAGE_SIZE) int size,
+                                                @Parameter(description = "ALL은 만료 주문 제외, ACTIVE는 접수~픽업 대기, HISTORY는 완료·취소·거절",
+                                                        schema = @Schema(allowableValues = {"ALL", "ACTIVE", "HISTORY"}, defaultValue = "ALL"))
+                                                @RequestParam(required = false) String filter) {
         Long memberId = customerId(authUser);
         validatePaging(page, size);
 
-        OrderQueryService.ListResult result = orderQueryService.listMine(memberId, page, size);
+        OrderQueryService.ListResult result = orderQueryService.listMine(memberId, page, size, parseFilter(filter));
         List<OrderListResponse.Item> content = result.content().stream()
                 .map(item -> new OrderListResponse.Item(item.orderId(), item.orderCode(), item.storeName(),
                         item.status(), item.pickupNo(), item.itemSummary(), item.totalAmount(), toKst(item.placedAt())))
@@ -82,16 +88,27 @@ public class OrderQueryController {
         return authUser.id();
     }
 
-    private void validatePaging(int page, int size) {
-        if (page < 0) {
-            throw invalidPaging("page", "page는 0 이상이에요.");
+    private ListFilter parseFilter(String filter) {
+        if (filter == null) {
+            return ListFilter.ALL;
         }
-        if (size < 1 || size > MAX_PAGE_SIZE) {
-            throw invalidPaging("size", "size는 1 이상 " + MAX_PAGE_SIZE + " 이하예요.");
+        try {
+            return ListFilter.valueOf(filter);
+        } catch (IllegalArgumentException ex) {
+            throw invalidListParameter("filter", "filter는 ALL, ACTIVE, HISTORY 중 하나로 입력해 주세요.");
         }
     }
 
-    private BusinessException invalidPaging(String field, String reason) {
+    private void validatePaging(int page, int size) {
+        if (page < 0) {
+            throw invalidListParameter("page", "page는 0 이상이에요.");
+        }
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw invalidListParameter("size", "size는 1 이상 " + MAX_PAGE_SIZE + " 이하예요.");
+        }
+    }
+
+    private BusinessException invalidListParameter(String field, String reason) {
         return new BusinessException(CommonErrorCode.VALIDATION_FAILED, reason,
                 List.of(new ApiResponse.FieldError(field, reason)));
     }

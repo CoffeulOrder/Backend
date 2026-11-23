@@ -31,6 +31,15 @@ public class OrderQueryService {
     private static final List<String> WAITING_STATUSES = List.of(
             Order.STATUS_REQUESTED, Order.STATUS_ACCEPTED, Order.STATUS_MAKING);
 
+    private static final List<String> ACTIVE_STATUSES = List.of(
+            Order.STATUS_REQUESTED, Order.STATUS_ACCEPTED, Order.STATUS_MAKING, Order.STATUS_READY);
+    private static final List<String> HISTORY_STATUSES = List.of(
+            Order.STATUS_COMPLETED, Order.STATUS_CANCELED, Order.STATUS_REJECTED);
+
+    public enum ListFilter {
+        ALL, ACTIVE, HISTORY
+    }
+
     private final OrderRepository orderRepository;
     private final OrderLineRepository orderLineRepository;
     private final OrderLineOptionRepository orderLineOptionRepository;
@@ -54,14 +63,18 @@ public class OrderQueryService {
     }
 
     /**
-     * MS-17. 최신순. 만료된 결제 대기(EXPIRED)만 뺀다 — 만료 전의 결제 대기는 결제창에서 이탈한 사용자가
-     * 다시 들어올 수 있게 목록에 남긴다. 그래서 결제 대기 주문은 placedAt · pickupNo가 null이다(접수 전).
+     * MS-17. 최신순. 기본 목록은 만료된 주문만 제외한다.
+     * 홈은 ACTIVE, 지난 주문 화면은 HISTORY로 조회한다.
      */
     @Transactional(readOnly = true)
-    public ListResult listMine(Long memberId, int page, int size) {
+    public ListResult listMine(Long memberId, int page, int size, ListFilter filter) {
         // created_at이 같은 주문끼리도 순서가 흔들리지 않게 id를 함께 건다.
         PageRequest pageable = PageRequest.of(page, size, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
-        Slice<Order> slice = orderRepository.findByMemberIdAndStatusNot(memberId, Order.STATUS_EXPIRED, pageable);
+        Slice<Order> slice = switch (filter) {
+            case ALL -> orderRepository.findByMemberIdAndStatusNot(memberId, Order.STATUS_EXPIRED, pageable);
+            case ACTIVE -> orderRepository.findByMemberIdAndStatusIn(memberId, ACTIVE_STATUSES, pageable);
+            case HISTORY -> orderRepository.findByMemberIdAndStatusIn(memberId, HISTORY_STATUSES, pageable);
+        };
 
         Map<Long, String> storeNames = new HashMap<>();
         List<ListItem> content = slice.getContent().stream()
