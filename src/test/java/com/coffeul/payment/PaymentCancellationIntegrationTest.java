@@ -12,6 +12,10 @@ import com.coffeul.support.TestFixtures;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -89,6 +93,153 @@ class PaymentCancellationIntegrationTest extends AbstractIntegrationTest {
     }
 
     @Test
+    void staffRejectionQueuesPersistedActorAndReasonAndReusesSameRefund() {
+        long order = approved("FAKE");
+        String reason = "원두 품절로 제공 불가";
+        assertThatThrownBy(() -> api.requestStaffRejection(order, 4000, reason))
+                .isInstanceOf(IllegalTransactionStateException.class);
+        var first = transaction.execute(tx -> api.requestStaffRejection(order, 4000, reason));
+        var repeated = transaction.execute(tx -> api.requestStaffRejection(order, 4000, reason));
+        assertThat(repeated).isEqualTo(first);
+        assertThat(first.status()).isEqualTo("REQUESTED");
+        var saved = repository.findRequestByOrderId(order).orElseThrow();
+        assertThat(saved.requestedByType()).isEqualTo("STAFF");
+        assertThat(saved.reason()).isEqualTo(reason);
+        assertThat(count(order)).isEqualTo(1);
+        assertThat(status(order)).isEqualTo("APPROVED");
+        assertThat(processor.processBatch()).isZero();
+        jdbc.update("UPDATE orders SET status = 'REJECTED', reject_reason_code = 'SOLD_OUT', rejected_at = UTC_TIMESTAMP(6) WHERE id = ?", order);
+        assertThat(processor.processBatch()).isEqualTo(1);
+        assertThat(refundStatus(order)).isEqualTo("SUCCEEDED");
+        assertThat(status(order)).isEqualTo("CANCELED");
+        var completed = transaction.execute(tx -> api.requestStaffRejection(order, 4000, reason));
+        assertThat(completed).isEqualTo(api.findByOrderId(order).orElseThrow());
+        assertThat(processor.processBatch()).isZero();
+        assertThat(count(order)).isEqualTo(1);
+        assertThat(attempts(order)).isEqualTo(1);
+    }
+
+    @Test
+    void existingRefundCannotBeReusedWithDifferentActorReasonOrAmount() {
+        long customerOrder = approved("FAKE");
+        queue(customerOrder);
+        assertThatThrownBy(() -> transaction.execute(tx -> api.requestStaffRejection(customerOrder, 4000, "고객 요청")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+
+        long staffOrder = approved("FAKE");
+        transaction.execute(tx -> api.requestStaffRejection(staffOrder, 4000, "고객 요청"));
+        assertThatThrownBy(() -> queue(staffOrder))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        assertThatThrownBy(() -> transaction.execute(tx -> api.requestStaffRejection(staffOrder, 4000, "다른 사유")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        assertThatThrownBy(() -> transaction.execute(tx -> api.requestStaffRejection(staffOrder, 1000, "고객 요청")))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.AMOUNT_MISMATCH));
+        assertThat(count(customerOrder)).isEqualTo(1);
+        assertThat(count(staffOrder)).isEqualTo(1);
+        assertThat(repository.findRequestByOrderId(staffOrder).orElseThrow().reason()).isEqualTo("고객 요청");
+    }
+
+    @Test
+    void existingCustomerRefundCannotBeReusedWithChangedSavedReason() {
+        long order = approved("FAKE");
+        var cancellation = queue(order);
+        jdbc.update("UPDATE payment_cancel SET cancel_reason = '변경된 사유' WHERE id = ?", cancellation.cancellationId());
+        assertThatThrownBy(() -> queue(order))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        assertThat(count(order)).isEqualTo(1);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t\n"})
+    void staffRejectionRejectsMissingReason(String reason) {
+        long order = approved("FAKE");
+        assertThatThrownBy(() -> transaction.execute(tx -> api.requestStaffRejection(order, 4000, reason)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        assertThat(count(order)).isZero();
+    }
+
+    @Test
+    void staffRejectionEnforcesSavedReasonLengthBeforeQueueing() {
+        long order = approved("FAKE");
+        assertThatThrownBy(() -> transaction.execute(tx -> api.requestStaffRejection(order, 4000, "가".repeat(201))))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        assertThat(count(order)).isZero();
+        transaction.execute(tx -> api.requestStaffRejection(order, 4000, "가".repeat(200)));
+        assertThat(repository.findRequestByOrderId(order).orElseThrow().reason()).isEqualTo("가".repeat(200));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"CUSTOMER,REJECTED", "STAFF,CANCELED", "CUSTOMER,REQUESTED", "STAFF,REQUESTED",
+            "SYSTEM,CANCELED", "SYSTEM,REJECTED"})
+    void invalidActorStatePairIsSkippedByBothDueQueryAndClaim(String actor, String orderStatus) {
+        long order = approved("FAKE");
+        var cancellation = queue(order);
+        jdbc.update("UPDATE orders SET status = ?, reject_reason_code = 'SOLD_OUT' WHERE id = ?", orderStatus, order);
+        jdbc.update("UPDATE payment_cancel SET requested_by_type = ? WHERE id = ?", actor, cancellation.cancellationId());
+        Instant now = Instant.now();
+        assertThat(repository.dueIds("FAKE", now, 100)).doesNotContain(cancellation.cancellationId());
+        var claim = transaction.execute(tx -> repository.claim(cancellation.cancellationId(), "FAKE", now, now.plusSeconds(60)));
+        assertThat(claim).isEmpty();
+        assertThat(processor.processBatch()).isZero();
+        assertThat(attempts(order)).isZero();
+        assertThat(refundStatus(order)).isEqualTo("REQUESTED");
+        assertThat(status(order)).isEqualTo("APPROVED");
+    }
+
+    @Test
+    void rejectedPortOneOrderPassesPersistedReasonAndAdminRequesterOnEveryAttempt() {
+        long order = approved("INICIS_V2");
+        var client = mock(PortOnePaymentClient.class);
+        var gateway = gateway(new MockEnvironment().withProperty("coffeul.payment.gateway", "portone"), client);
+        var service = new com.coffeul.payment.application.PaymentCancellationService(repository, gateway);
+        String reason = "우유 품절로 주문 제공 불가";
+        var cancellation = transaction.execute(tx -> service.requestStaffRejection(order, 4000, reason));
+        jdbc.update("UPDATE orders SET status = 'REJECTED', reject_reason_code = 'SOLD_OUT', rejected_at = UTC_TIMESTAMP(6) WHERE id = ?", order);
+        String key = jdbc.queryForObject("SELECT idempotency_key FROM payment_cancel WHERE id = ?",
+                String.class, cancellation.cancellationId());
+        var worker = portOneWorker(client);
+        when(client.cancelFullPayment(any(), eq(key), eq("ADMIN"), eq(reason)))
+                .thenThrow(new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE)).thenReturn(true);
+        worker.processBatch();
+        assertThat(refundStatus(order)).isEqualTo("REQUESTED");
+        expireLease(order);
+        worker.processBatch();
+        assertThat(refundStatus(order)).isEqualTo("SUCCEEDED");
+        assertThat(status(order)).isEqualTo("CANCELED");
+        var completed = transaction.execute(tx -> service.requestStaffRejection(order, 4000, reason));
+        assertThat(completed).isEqualTo(api.findByOrderId(order).orElseThrow());
+        assertThat(count(order)).isEqualTo(1);
+        verify(client, times(2)).cancelFullPayment(any(), eq(key), eq("ADMIN"), eq(reason));
+        verifyNoMoreInteractions(client);
+    }
+
+    @Test
+    void rejectedOrderWithInactiveProviderIsNotClaimed() {
+        long order = approved("INICIS_V2");
+        var client = mock(PortOnePaymentClient.class);
+        var service = new com.coffeul.payment.application.PaymentCancellationService(repository,
+                gateway(new MockEnvironment().withProperty("coffeul.payment.gateway", "portone"), client));
+        var cancellation = transaction.execute(tx -> service.requestStaffRejection(order, 4000, "품절"));
+        jdbc.update("UPDATE orders SET status = 'REJECTED', reject_reason_code = 'SOLD_OUT', rejected_at = UTC_TIMESTAMP(6) WHERE id = ?", order);
+        Instant now = Instant.now();
+        assertThat(repository.dueIds("FAKE", now, 100)).doesNotContain(cancellation.cancellationId());
+        var claim = transaction.execute(tx -> repository.claim(cancellation.cancellationId(), "FAKE", now, now.plusSeconds(60)));
+        assertThat(claim).isEmpty();
+        assertThat(processor.processBatch()).isZero();
+        assertThat(attempts(order)).isZero();
+        assertThat(refundStatus(order)).isEqualTo("REQUESTED");
+        verifyNoInteractions(client);
+    }
+
+    @Test
     void queueRollsBackWithOrderTransaction() {
         long order = approved("FAKE");
         assertThatThrownBy(() -> transaction.executeWithoutResult(tx -> {
@@ -146,7 +297,7 @@ class PaymentCancellationIntegrationTest extends AbstractIntegrationTest {
         var client = mock(PortOnePaymentClient.class);
         queuePortOne(order, client);
         var worker = portOneWorker(client);
-        when(client.cancelFullPayment(any(), anyString())).thenAnswer(call -> {
+        when(client.cancelFullPayment(any(), anyString(), eq("CUSTOMER"), eq("고객 요청"))).thenAnswer(call -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
         }).thenReturn(true);
@@ -159,7 +310,7 @@ class PaymentCancellationIntegrationTest extends AbstractIntegrationTest {
         assertThat(refundStatus(order)).isEqualTo("SUCCEEDED");
         assertThat(status(order)).isEqualTo("CANCELED");
         var keys = org.mockito.ArgumentCaptor.forClass(String.class);
-        verify(client, times(2)).cancelFullPayment(any(), keys.capture());
+        verify(client, times(2)).cancelFullPayment(any(), keys.capture(), eq("CUSTOMER"), eq("고객 요청"));
         assertThat(keys.getAllValues()).allMatch(key -> key.equals(keys.getAllValues().getFirst()));
     }
 
@@ -169,12 +320,12 @@ class PaymentCancellationIntegrationTest extends AbstractIntegrationTest {
         var client = mock(PortOnePaymentClient.class);
         queuePortOne(order, client);
         var worker = portOneWorker(client);
-        when(client.cancelFullPayment(any(), anyString())).thenReturn(false);
+        when(client.cancelFullPayment(any(), anyString(), eq("CUSTOMER"), eq("고객 요청"))).thenReturn(false);
         worker.processBatch();
         assertThat(refundStatus(order)).isEqualTo("REQUESTED");
         assertThat(status(order)).isEqualTo("APPROVED");
         expireLease(order);
-        when(client.cancelFullPayment(any(), anyString()))
+        when(client.cancelFullPayment(any(), anyString(), eq("CUSTOMER"), eq("고객 요청")))
                 .thenThrow(new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
         worker.processBatch();
         assertThat(refundStatus(order)).isEqualTo("FAILED");
@@ -189,7 +340,7 @@ class PaymentCancellationIntegrationTest extends AbstractIntegrationTest {
         var worker = portOneWorker(client);
         var entered = new CountDownLatch(1);
         var release = new CountDownLatch(1);
-        when(client.cancelFullPayment(any(), anyString())).thenAnswer(call -> {
+        when(client.cancelFullPayment(any(), anyString(), eq("CUSTOMER"), eq("고객 요청"))).thenAnswer(call -> {
             assertThat(TransactionSynchronizationManager.isActualTransactionActive()).isFalse();
             entered.countDown();
             assertThat(release.await(10, TimeUnit.SECONDS)).isTrue();
@@ -207,7 +358,7 @@ class PaymentCancellationIntegrationTest extends AbstractIntegrationTest {
         }
         assertThat(refundStatus(order)).isEqualTo("SUCCEEDED");
         assertThat(attempts(order)).isEqualTo(1);
-        verify(client).cancelFullPayment(any(), anyString());
+        verify(client).cancelFullPayment(any(), anyString(), eq("CUSTOMER"), eq("고객 요청"));
     }
 
     @Test

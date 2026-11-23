@@ -15,7 +15,9 @@ import java.util.UUID;
 public class PaymentCancellationRepository {
     public record Payment(long id, long orderId, String provider, String paymentId, String transactionId,
                           String storeId, String channelKey, int amount, String status) { }
-    public record Claim(long id, Payment payment, int amount, String idempotencyKey, int attempt) { }
+    public record CancellationRequest(Cancellation cancellation, String requestedByType, String reason) { }
+    public record Claim(long id, Payment payment, int amount, String idempotencyKey, int attempt,
+                        String requestedByType, String reason) { }
 
     private final JdbcTemplate jdbc;
 
@@ -33,18 +35,23 @@ public class PaymentCancellationRepository {
     }
 
     public Optional<Cancellation> findByOrderId(long orderId) {
-        return jdbc.query("""
-                SELECT c.id, c.status, c.cancel_amount FROM payment_cancel c
-                JOIN payment p ON p.id = c.payment_id WHERE p.order_id = ? ORDER BY c.id LIMIT 1
-                """, (rs, row) -> new Cancellation(rs.getLong("id"), rs.getString("status"),
-                rs.getInt("cancel_amount")), orderId).stream().findFirst();
+        return findRequestByOrderId(orderId).map(CancellationRequest::cancellation);
     }
 
-    public Cancellation insert(Payment payment) {
+    public Optional<CancellationRequest> findRequestByOrderId(long orderId) {
+        return jdbc.query("""
+                SELECT c.id, c.status, c.cancel_amount, c.requested_by_type, c.cancel_reason FROM payment_cancel c
+                JOIN payment p ON p.id = c.payment_id WHERE p.order_id = ? ORDER BY c.id LIMIT 1
+                """, (rs, row) -> new CancellationRequest(new Cancellation(rs.getLong("id"), rs.getString("status"),
+                rs.getInt("cancel_amount")), rs.getString("requested_by_type"), rs.getString("cancel_reason")),
+                orderId).stream().findFirst();
+    }
+
+    public Cancellation insert(Payment payment, String actor, String reason) {
         jdbc.update("""
                 INSERT INTO payment_cancel (payment_id, cancel_amount, cancel_reason, requested_by_type,
-                    status, idempotency_key) VALUES (?, ?, '고객 요청', 'CUSTOMER', 'REQUESTED', ?)
-                """, payment.id(), payment.amount(), UUID.randomUUID().toString());
+                    status, idempotency_key) VALUES (?, ?, ?, ?, 'REQUESTED', ?)
+                """, payment.id(), payment.amount(), reason, actor, UUID.randomUUID().toString());
         return findByOrderId(payment.orderId()).orElseThrow();
     }
 
@@ -54,7 +61,8 @@ public class PaymentCancellationRepository {
                 JOIN orders o ON o.id = p.order_id
                 WHERE c.status = 'REQUESTED' AND (c.next_retry_at IS NULL OR c.next_retry_at <= ?)
                     AND p.pg_provider = ? AND p.status IN ('APPROVED', 'CANCELED')
-                    AND o.status = 'CANCELED' AND c.requested_by_type = 'CUSTOMER'
+                    AND ((o.status = 'CANCELED' AND c.requested_by_type = 'CUSTOMER')
+                        OR (o.status = 'REJECTED' AND c.requested_by_type = 'STAFF'))
                 ORDER BY c.id LIMIT ?
                 """, (rs, row) -> rs.getLong(1), utc(now), provider, limit);
     }
@@ -67,19 +75,22 @@ public class PaymentCancellationRepository {
                 WHERE c.id = ? AND c.status = 'REQUESTED'
                     AND (c.next_retry_at IS NULL OR c.next_retry_at <= ?)
                     AND p.pg_provider = ? AND p.status IN ('APPROVED', 'CANCELED')
-                    AND o.status = 'CANCELED' AND c.requested_by_type = 'CUSTOMER'
+                    AND ((o.status = 'CANCELED' AND c.requested_by_type = 'CUSTOMER')
+                        OR (o.status = 'REJECTED' AND c.requested_by_type = 'STAFF'))
                 """, utc(leaseUntil), id, utc(now), provider);
         if (updated == 0) {
             return Optional.empty();
         }
         return jdbc.query("""
-                SELECT c.id AS cancel_id, c.cancel_amount, c.idempotency_key, c.attempt_count, p.*
+                SELECT c.id AS cancel_id, c.cancel_amount, c.idempotency_key, c.attempt_count,
+                    c.requested_by_type, c.cancel_reason, p.*
                 FROM payment_cancel c JOIN payment p ON p.id = c.payment_id WHERE c.id = ?
                 """, (rs, row) -> new Claim(rs.getLong("cancel_id"), new Payment(rs.getLong("id"),
                 rs.getLong("order_id"), rs.getString("pg_provider"), rs.getString("pg_order_id"),
                 rs.getString("payment_key"), rs.getString("portone_store_id"), rs.getString("portone_channel_key"),
                 rs.getInt("amount"), rs.getString("status")), rs.getInt("cancel_amount"),
-                rs.getString("idempotency_key"), rs.getInt("attempt_count")), id).stream().findFirst();
+                rs.getString("idempotency_key"), rs.getInt("attempt_count"), rs.getString("requested_by_type"),
+                rs.getString("cancel_reason")), id).stream().findFirst();
     }
 
     public void succeed(Claim claim, Instant now) {

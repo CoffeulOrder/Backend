@@ -5,6 +5,7 @@ import com.coffeul.payment.api.PaymentErrorCode;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
@@ -52,6 +53,56 @@ class PortOnePaymentCancellationClientTest {
                 .andRespond(withSuccess(response("SUCCEEDED", 4500), MediaType.APPLICATION_JSON));
         lookup(CANCELLED);
         assertThat(client.cancelFullPayment(PAYMENT, "persisted-key-12345")).isTrue();
+        server.verify();
+    }
+
+    @Test
+    void staffRefundPostsAdminRequesterAndPersistedReasonWithQuotedIdempotency() {
+        String key = "550e8400-e29b-41d4-a716-446655440000";
+        lookup(PAID);
+        server.expect(requestTo(POST)).andExpect(method(HttpMethod.POST))
+                .andExpect(header("Idempotency-Key", "\"" + key + "\""))
+                .andExpect(content().json("""
+                        {"storeId":"store-test","reason":"우유 품절로 주문 제공 불가","requester":"ADMIN",
+                         "amount":4500,"currentCancellableAmount":4500}
+                        """))
+                .andRespond(withSuccess(response("SUCCEEDED", 4500), MediaType.APPLICATION_JSON));
+        lookup(CANCELLED);
+        assertThat(client.cancelFullPayment(PAYMENT, key, "ADMIN", "우유 품절로 주문 제공 불가")).isTrue();
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"STAFF", "SYSTEM", "admin", "CUSTOMER "})
+    void unsupportedRequesterStopsBeforeAnyHttpCall(String requester) {
+        assertThatThrownBy(() -> client.cancelFullPayment(PAYMENT, "persisted-key-12345", requester, "품절"))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "\t\n"})
+    void missingReasonStopsBeforeAnyHttpCall(String reason) {
+        assertThatThrownBy(() -> client.cancelFullPayment(PAYMENT, "persisted-key-12345", "ADMIN", reason))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        server.verify();
+    }
+
+    @Test
+    void refundReasonLengthIsValidatedWithoutTruncatingSavedReason() {
+        assertThatThrownBy(() -> client.cancelFullPayment(PAYMENT, "persisted-key-12345", "ADMIN", "가".repeat(201)))
+                .isInstanceOfSatisfying(BusinessException.class,
+                        error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH));
+        lookup(PAID);
+        server.expect(requestTo(POST)).andExpect(jsonPath("$.requester").value("ADMIN"))
+                .andExpect(jsonPath("$.reason").value("가".repeat(200)))
+                .andRespond(withSuccess(response("SUCCEEDED", 4500), MediaType.APPLICATION_JSON));
+        lookup(CANCELLED);
+        assertThat(client.cancelFullPayment(PAYMENT, "persisted-key-12345", "ADMIN", "가".repeat(200))).isTrue();
         server.verify();
     }
 

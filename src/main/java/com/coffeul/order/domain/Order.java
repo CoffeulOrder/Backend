@@ -100,11 +100,14 @@ public class Order {
     @Column(name = "canceled_at")
     private Instant canceledAt;
 
-    @Column(name = "rejected_at", insertable = false, updatable = false)
+    @Column(name = "rejected_at")
     private Instant rejectedAt;
 
-    @Column(name = "reject_reason_code", length = 30, insertable = false, updatable = false)
+    @Column(name = "reject_reason_code", length = 30)
     private String rejectReasonCode;
+
+    @Column(name = "reject_reason_detail", length = 200)
+    private String rejectReasonDetail;
 
     /** DB 기본값(CURRENT_TIMESTAMP)이 채운다. 내 주문 목록의 정렬 기준(idx_orders_member_created). */
     @Column(name = "created_at", insertable = false, updatable = false)
@@ -226,6 +229,10 @@ public class Order {
         return rejectReasonCode;
     }
 
+    public String getRejectReasonDetail() {
+        return rejectReasonDetail;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -251,6 +258,15 @@ public class Order {
         requireStatus(STATUS_REQUESTED);
         status = STATUS_CANCELED;
         canceledAt = now;
+    }
+
+    /** MS-23 매장 거절: 접수 대기 주문을 사유와 함께 거절한다. */
+    public void reject(Instant now, OrderRejectReason reason, String detail) {
+        requireStatus(STATUS_REQUESTED);
+        status = STATUS_REJECTED;
+        rejectedAt = now;
+        rejectReasonCode = reason.name();
+        rejectReasonDetail = detail;
     }
 
     /** MS-24 제조 시작: ACCEPTED → MAKING. */

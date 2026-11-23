@@ -23,6 +23,19 @@ public class PaymentCancellationService implements PaymentCancellationApi {
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public Cancellation requestCustomerCancellation(Long orderId, int amount) {
+        return requestCancellation(orderId, amount, "CUSTOMER", "고객 요청");
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Cancellation requestStaffRejection(Long orderId, int amount, String reason) {
+        return requestCancellation(orderId, amount, "STAFF", reason);
+    }
+
+    private Cancellation requestCancellation(Long orderId, int amount, String actor, String reason) {
+        if (reason == null || reason.isBlank() || reason.length() > 200) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+        }
         var payment = repository.lockPayment(orderId)
                 .orElseThrow(() -> new BusinessException(PaymentErrorCode.ATTEMPT_NOT_FOUND));
         if (amount <= 0 || amount != payment.amount()) {
@@ -31,17 +44,21 @@ public class PaymentCancellationService implements PaymentCancellationApi {
         if (!gateway.supports(payment.provider())) {
             throw new BusinessException(PaymentErrorCode.SETUP_NOT_READY);
         }
-        var existing = repository.findByOrderId(orderId);
+        var existing = repository.findRequestByOrderId(orderId);
         if (existing.isPresent()) {
-            if (existing.get().amount() != amount) {
+            var request = existing.get();
+            if (request.cancellation().amount() != amount) {
                 throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
             }
-            return existing.get();
+            if (!actor.equals(request.requestedByType()) || !reason.equals(request.reason())) {
+                throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+            }
+            return request.cancellation();
         }
         if (!"APPROVED".equals(payment.status())) {
             throw new BusinessException(PaymentErrorCode.INVALID_STATE);
         }
-        return repository.insert(payment);
+        return repository.insert(payment, actor, reason);
     }
 
     @Override

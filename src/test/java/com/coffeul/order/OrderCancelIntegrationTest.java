@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ActiveProfiles("dev")
 @TestPropertySource(properties = {"coffeul.dev.payment-flow-enabled=true", "coffeul.payment.gateway=fake",
-        "coffeul.payment.cancel.enabled=false"})
+        "coffeul.payment.cancel.enabled=false", "coffeul.payment.cancel.batch-size=100"})
 class OrderCancelIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired private MockMvc mvc;

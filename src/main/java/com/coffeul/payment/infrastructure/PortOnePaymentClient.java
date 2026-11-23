@@ -83,12 +83,19 @@ public class PortOnePaymentClient {
 
     /** Full refund only. A successful POST alone is insufficient proof of completion. */
     public boolean cancelFullPayment(CancellationPayment payment, String idempotencyKey) {
+        return cancelFullPayment(payment, idempotencyKey, "CUSTOMER", "고객 요청");
+    }
+
+    public boolean cancelFullPayment(CancellationPayment payment, String idempotencyKey,
+                                     String requester, String reason) {
         if (TransactionSynchronizationManager.isActualTransactionActive()) {
             throw new IllegalStateException("CANCEL_IO_REQUIRES_NO_TRANSACTION");
         }
         if (payment.amount() <= 0 || !hasText(payment.paymentId()) || !hasText(payment.transactionId())
                 || !hasText(payment.storeId()) || !hasText(payment.channelKey())
-                || idempotencyKey == null || !idempotencyKey.matches("[A-Za-z0-9_-]{16,256}")) {
+                || idempotencyKey == null || !idempotencyKey.matches("[A-Za-z0-9_-]{16,256}")
+                || !("CUSTOMER".equals(requester) || "ADMIN".equals(requester))
+                || !hasText(reason) || reason.length() > 200) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
         }
         try {
@@ -104,7 +111,7 @@ public class PortOnePaymentClient {
             JsonNode result = client.post().uri("/payments/{paymentId}/cancel", payment.paymentId())
                     .header("Idempotency-Key", "\"" + idempotencyKey + "\"")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(Map.of("storeId", payment.storeId(), "reason", "고객 요청", "requester", "CUSTOMER",
+                    .body(Map.of("storeId", payment.storeId(), "reason", reason, "requester", requester,
                             "amount", payment.amount(), "currentCancellableAmount", payment.amount()))
                     .retrieve()
                     .onStatus(status -> !status.is2xxSuccessful(), (request, response) -> {

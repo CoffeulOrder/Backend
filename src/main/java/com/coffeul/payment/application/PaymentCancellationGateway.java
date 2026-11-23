@@ -43,11 +43,19 @@ public class PaymentCancellationGateway {
         if (payment.amount() != claim.amount() || claim.amount() <= 0) {
             throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
         }
+        String requester = switch (claim.requestedByType()) {
+            case "CUSTOMER" -> "CUSTOMER";
+            case "STAFF" -> "ADMIN";
+            case null, default -> throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+        };
+        if (claim.reason() == null || claim.reason().isBlank() || claim.reason().length() > 200) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+        }
         if ("FAKE".equals(payment.provider())) {
             return true;
         }
         return portOne.getObject().cancelFullPayment(new PortOnePaymentClient.CancellationPayment(
                 payment.paymentId(), payment.transactionId(), payment.storeId(), payment.channelKey(),
-                payment.amount()), claim.idempotencyKey());
+                payment.amount()), claim.idempotencyKey(), requester, claim.reason());
     }
 }

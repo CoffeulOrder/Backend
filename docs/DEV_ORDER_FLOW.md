@@ -68,7 +68,7 @@ coffeul.payment.gateway=fake
 ## 아직 남은 작업
 
 - 실제 KG이니시스/PortOne 계약·테스트/실결제 채널·심사 결과 확인, SDK/WebView 방식·필드 계약 확정.
-- 테스트 채널에서 실제 PG 조회·확정과 서명된 웹훅 수신, 고객 취소의 실제 전액 환불을 검증한다. 만료된 결제의 대사·복구, 결제 재시도, 매장 거절·환불은 후속 작업이다.
+- 테스트 채널에서 실제 PG 조회·확정과 서명된 웹훅 수신, 고객 취소·매장 거절의 실제 전액 환불을 검증한다. 만료된 결제의 대사·복구, 결제 재시도, 수락 후 매장 환불은 후속 작업이다.
 - 고객 앱의 메뉴 상세·옵션 조회는 `GET /api/v1/stores/{storeId}/menus/{menuId}`와 연동해 기기에서 검증한다.
 - 실제 고객 앱·사장님 앱의 서버 연결과 기기 검증, CORS, 푸시 실제 발송.
 - 기본 주문 상태는 기존 ACCEPTED/MAKING 분리를 유지한다. 닉네임·PIN·미수령·REFUNDED·관리자 웹 정책은 별도 합의 후 반영한다.
@@ -112,6 +112,20 @@ FE는 취소 버튼의 활성화에 주문 상세의 `cancelable`을 사용하�
 [PortOne V2 취소 API](https://developers.portone.io/opi/ko/integration/cancel/v2/readme?v=v2)를 기준으로 테스트 응답을 검증한다.
 KG이니시스 테스트 채널의 실제 환불 검증은 환경 전환 후 진행한다.
 
+## 매장 주문 거절과 전액 환불 — MS-23
+
+`POST /api/v1/staff/orders/{orderId}/reject`에 매장 OWNER 또는 배정된 STAFF의 Bearer와 아래 본문을 보낸다.
+
+```json
+{"reasonCode":"SOLD_OUT","reasonDetail":"오늘 재료가 소진됐어요"}
+```
+
+- 사유는 기존 DB의 `SOLD_OUT`, `INGREDIENT_SHORTAGE`, `STORE_BUSY`, `STORE_CLOSING`, `OTHER`를 사용한다. `OTHER`에는 상세 메모가 필요하며 메모는 최대 200자다.
+- 활성 직원 계정, 현재 역할·사업자, 매장 접근 권한을 확인한다. `REQUESTED`에서만 거절할 수 있고 매장 수락 이후의 환불은 별도 작업이다.
+- 거절 상태·사유·시각·이력과 전액 환불 요청을 같은 트랜잭션에 저장한다. 동일 사유의 재요청은 기존 환불 상태를 반환하며, 다른 사유로 이미 거절된 주문을 변경할 수 없다.
+- 첫 응답은 HTTP 202다. `data`에는 `orderId`, `status`, `reasonCode`, `reasonDetail`, `rejectedAt`, `refundStatus`, `refundAmount`를 담는다. 고객 주문 상세의 `rejectReason`은 사유 코드이며 `rejectReasonDetail`과 `refundStatus`를 함께 조회할 수 있다.
+- 매장 거절 환불은 `payment_cancel.requested_by_type=STAFF`로 저장한다. PortOne에는 환불 요청 주체를 `ADMIN`으로 전송한다. 고객 취소와 동일한 리스·재조회·재시도 경로를 사용한다.
+
 ## 실행 검증
 
 Java 21, Docker/Colima에서:
@@ -123,6 +137,11 @@ Java 21, Docker/Colima에서:
 Colima 사용 시 JAVA_HOME(Java21), DOCKER_HOST, TESTCONTAINERS_DOCKER_SOCKET_OVERRIDE를 README 방식으로 지정한다.
 `DevOrderFlowIntegrationTest`는 실제 로그인·주문 생성·승인·사장님 처리·픽업 API를 호출하며, 주문 상태를 테스트 픽스처로 강제 승격하지 않는다.
 `DevPaymentActivationTest`는 dev opt-in·prod 제외 조건을, `PersistentFakePaymentServiceTest`는 실제 게이트웨이 모드에서 가짜 승인이 막히는지 검증한다.
+
+2026-11-23 취소·거절 통합 검증: Java 21·실제 MySQL 8.4·UTC JVM 전체 326건 통과, 실패·오류·스킵 0.
+주문 생성·가짜 승인부터 고객 취소/매장 거절·전액 환불 상태 조회까지 검증했다.
+동시 수락·취소·거절, 중복 거절 재조회, 권한·비활성 직원, PG 취소의 주체·금액·멱등 키도 포함한다.
+실제 KG이니시스 테스트 채널 환불과 앱 실기기 연동은 아직 검증하지 않았다.
 
 아래 결과는 초기 개발용 가짜 결제의 검증 기록이다.
 

@@ -7,6 +7,8 @@ public interface PaymentCancellationApi {
 
     Cancellation requestCustomerCancellation(Long orderId, int amount);
 
+    Cancellation requestStaffRejection(Long orderId, int amount, String reason);
+
     Optional<Cancellation> findByOrderId(Long orderId);
 
     record Cancellation(long cancellationId, String status, int amount) {

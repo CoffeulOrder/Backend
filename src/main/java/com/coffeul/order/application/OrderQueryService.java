@@ -111,7 +111,7 @@ public class OrderQueryService {
         // 고객이 취소할 수 있는 건 매장이 아직 수락하지 않은 REQUESTED뿐이다(명세 memo).
         boolean cancelable = Order.STATUS_REQUESTED.equals(order.getStatus());
 
-        String refundStatus = Order.STATUS_CANCELED.equals(order.getStatus())
+        String refundStatus = Order.STATUS_CANCELED.equals(order.getStatus()) || Order.STATUS_REJECTED.equals(order.getStatus())
                 ? cancellations.findByOrderId(orderId).map(PaymentCancellationApi.Cancellation::status).orElse(null)
                 : null;
         return new Detail(order, storeNameOf(order.getStoreId()), aheadCount, cancelable, linesOf(order.getId()), refundStatus);
