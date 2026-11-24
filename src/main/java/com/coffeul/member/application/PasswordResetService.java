@@ -44,7 +44,7 @@ public class PasswordResetService {
 
         // 가입되지 않은 이메일에도 코드 행은 만들되 메일은 보내지 않는다(SM-1). 그래서 여기 도달하려면
         // 코드를 찍어 맞힌 경우뿐이고, 가입 여부를 드러내지 않도록 토큰 문제와 같은 응답을 준다.
-        Member member = memberRepository.findByEmail(verified.email())
+        Member member = memberRepository.findByEmailForUpdate(verified.email())
                 .orElseThrow(() -> new BusinessException(VerificationErrorCode.VERIFICATION_TOKEN_INVALID));
 
         member.changePassword(passwordEncoder.encode(newPassword));

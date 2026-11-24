@@ -41,7 +41,7 @@ public class MemberWithdrawService {
      */
     @Transactional
     public void withdraw(Long memberId, String password) {
-        Member member = memberRepository.findById(memberId)
+        Member member = memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHORIZED));
 
         // 이미 탈퇴한 계정에 남은 access 토큰으로 다시 부르는 경우. password_hash가 NULL이라 아래에서

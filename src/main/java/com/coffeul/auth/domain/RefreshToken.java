@@ -64,6 +64,11 @@ public class RefreshToken {
      * 이 토큰이 나중에 30초 유예 창 안에서 다시 오더라도 "동시 요청"으로 오인하지 않고 즉시 막는다.
      */
     public void revokeDueToReuse(Instant now) {
+        invalidate(now);
+    }
+
+    /** 명시적 폐기는 재시도 유예 없이 만료시킨다. */
+    public void invalidate(Instant now) {
         this.revokedAt = now;
         this.expiresAt = now;
     }

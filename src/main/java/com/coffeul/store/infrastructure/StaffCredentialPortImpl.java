@@ -40,6 +40,18 @@ public class StaffCredentialPortImpl implements StaffCredentialPort {
 
     @Override
     @Transactional
+    public Optional<StaffCredential> findByLoginIdForUpdate(String loginId) {
+        return staffAccountRepository.findByLoginIdForUpdate(loginId).map(this::toCredential);
+    }
+
+    @Override
+    @Transactional
+    public Optional<StaffCredential> findByIdForUpdate(Long staffId) {
+        return staffAccountRepository.findByIdForUpdate(staffId).map(this::toCredential);
+    }
+
+    @Override
+    @Transactional
     public void recordLoginSuccess(Long staffId, Instant now) {
         staffAccountRepository.findById(staffId).ifPresent(staff -> staff.recordLoginSuccess(now));
     }

@@ -29,7 +29,7 @@ public class PasswordChangeService {
     /** 비밀번호 변경과 refresh 폐기는 한 트랜잭션 — 바꿨는데 기존 세션이 살아 있는 중간 상태를 만들지 않는다. */
     @Transactional
     public void change(Long memberId, String currentPassword, String newPassword) {
-        Member member = memberRepository.findById(memberId)
+        Member member = memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new BusinessException(CommonErrorCode.UNAUTHORIZED));
 
         // 탈퇴 회원은 password_hash가 NULL이라 아래 matches에서 어차피 걸리지만, 그 경우 U004("현재 비밀번호가

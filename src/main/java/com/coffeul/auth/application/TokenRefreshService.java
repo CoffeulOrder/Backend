@@ -41,15 +41,17 @@ public class TokenRefreshService {
     // 그 폐기가 사라져서 탈취된 토큰이 계속 살아있게 된다.
     @Transactional(noRollbackFor = BusinessException.class)
     public TokenIssuer.TokenPair refresh(String refreshTokenPlain) {
-        RefreshToken existing = refreshTokenRepository.findByTokenHash(TokenHasher.sha256Hex(refreshTokenPlain))
+        String hash = TokenHasher.sha256Hex(refreshTokenPlain);
+        var subject = refreshTokenRepository.findSubjectByTokenHash(hash)
+                .orElseThrow(() -> new BusinessException(AuthErrorCode.REFRESH_INVALID));
+        AuthUser user = rebuildAuthUser(subject);
+        RefreshToken existing = refreshTokenRepository.findByTokenHashForUpdate(hash)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.REFRESH_INVALID));
 
         Instant now = Instant.now();
-        if (existing.getExpiresAt().isBefore(now)) {
+        if (!existing.getExpiresAt().isAfter(now)) {
             throw new BusinessException(AuthErrorCode.REFRESH_INVALID);
         }
-
-        AuthUser user = rebuildAuthUser(existing);
 
         if (existing.getRevokedAt() != null) {
             if (existing.getRevokedAt().isAfter(now.minusSeconds(REUSE_GRACE_SECONDS))) {
@@ -64,19 +66,19 @@ public class TokenRefreshService {
     }
 
     private void revokeFamily(String familyId, Instant now) {
-        refreshTokenRepository.findByFamilyIdAndRevokedAtIsNull(familyId)
-                .forEach(token -> token.revokeDueToReuse(now));
+        refreshTokenRepository.findUnexpiredFamilyForUpdate(familyId, now)
+                .forEach(token -> token.invalidate(now));
     }
 
-    private AuthUser rebuildAuthUser(RefreshToken token) {
-        if (AuthUser.SubjectType.MEMBER.name().equals(token.getSubjectType())) {
-            var credential = memberCredentialPort.findById(token.getSubjectId())
+    private AuthUser rebuildAuthUser(RefreshTokenRepository.SubjectReference subject) {
+        if (AuthUser.SubjectType.MEMBER.name().equals(subject.getSubjectType())) {
+            var credential = memberCredentialPort.findByIdForUpdate(subject.getSubjectId())
                     .filter(MemberCredentialPort.MemberCredential::active)
                     .orElseThrow(() -> new BusinessException(AuthErrorCode.REFRESH_INVALID));
             return new AuthUser(credential.memberId(), AuthUser.SubjectType.MEMBER,
                     AuthUser.Role.CUSTOMER, credential.schoolId(), null);
         }
-        var credential = staffCredentialPort.findById(token.getSubjectId())
+        var credential = staffCredentialPort.findByIdForUpdate(subject.getSubjectId())
                 .filter(StaffCredentialPort.StaffCredential::active)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.REFRESH_INVALID));
         return new AuthUser(credential.staffId(), AuthUser.SubjectType.STAFF,
