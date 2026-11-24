@@ -4,7 +4,7 @@ import com.coffeul.AbstractIntegrationTest;
 import com.coffeul.auth.api.AuthUser;
 import com.coffeul.auth.infrastructure.JwtAccessTokenService;
 import com.coffeul.common.error.BusinessException;
-import com.coffeul.order.application.ExpiredPaymentRecoveryJob;
+import com.coffeul.order.application.PaymentReconciliationJob;
 import com.coffeul.order.application.OrderExpiryJob;
 import com.coffeul.payment.api.PaymentCancellationApi;
 import com.coffeul.payment.api.PaymentErrorCode;
@@ -52,7 +52,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @ActiveProfiles("dev")
 @TestPropertySource(properties = {"coffeul.payment.gateway=portone", "coffeul.payment.cancel.batch-size=100",
-        "coffeul.payment.recovery.batch-size=100", "coffeul.payment.portone.webhook-enabled=true",
+        "coffeul.payment.recovery.batch-size=100", "coffeul.payment.recovery.pending-grace-seconds=3600",
+        "coffeul.payment.portone.webhook-enabled=true",
         "coffeul.payment.portone.webhook-secret=whsec_" + PortOneOrderPaymentIntegrationTest.TEST_SIGNING_KEY})
 class ExpiredPaymentRecoveryIntegrationTest extends AbstractIntegrationTest {
     private static final String STORE = "store-recovery-test";
@@ -63,7 +64,7 @@ class ExpiredPaymentRecoveryIntegrationTest extends AbstractIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private JwtAccessTokenService tokens;
     @Autowired private OrderExpiryJob expiry;
-    @Autowired private ExpiredPaymentRecoveryJob job;
+    @Autowired private PaymentReconciliationJob job;
     @Autowired private PaymentRecoveryApi recovery;
     @Autowired private PaymentCancellationProcessor refunds;
     @Autowired private TransactionTemplate transaction;

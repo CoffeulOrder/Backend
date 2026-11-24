@@ -90,10 +90,10 @@ public class PortOneOrderPaymentService {
     }
 
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
-    public void recoverExpiredPayment(long orderId, String paymentId) {
+    public void recoverUnconfirmedPayment(long orderId, String paymentId) {
         var order = orders.findById(orderId)
                 .orElseThrow(() -> new BusinessException(OrderErrorCode.ORDER_NOT_FOUND));
-        if (!isExpired(order.getStatus(), order.getExpiresAt(), Instant.now())) {
+        if (!Order.STATUS_PENDING_PAYMENT.equals(order.getStatus()) && !Order.STATUS_EXPIRED.equals(order.getStatus())) {
             return;
         }
         confirmAttempt(null, payments.findAttempt(orderId, paymentId));
