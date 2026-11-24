@@ -248,7 +248,7 @@ class PortOneOrderPaymentIntegrationTest extends AbstractIntegrationTest {
         });
         confirm(order, customer).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OD009"));
         assertThat(orderStatus(order)).isEqualTo("EXPIRED");
-        assertThat(paymentStatus(order)).isEqualTo("READY");
+        assertThat(paymentStatus(order)).isEqualTo("APPROVED");
         confirm(order, customer).andExpect(status().isConflict()).andExpect(jsonPath("$.code").value("OD009"));
         verify(portOne, times(1)).getPaidPayment(order.paymentId(), PORTONE_STORE);
     }

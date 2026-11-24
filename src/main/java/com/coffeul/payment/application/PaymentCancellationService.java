@@ -32,6 +32,12 @@ public class PaymentCancellationService implements PaymentCancellationApi {
         return requestCancellation(orderId, amount, "STAFF", reason);
     }
 
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public Cancellation requestExpiredPayment(Long orderId, int amount) {
+        return requestCancellation(orderId, amount, "SYSTEM", "주문 만료 후 결제 확인");
+    }
+
     private Cancellation requestCancellation(Long orderId, int amount, String actor, String reason) {
         if (reason == null || reason.isBlank() || reason.length() > 200) {
             throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);

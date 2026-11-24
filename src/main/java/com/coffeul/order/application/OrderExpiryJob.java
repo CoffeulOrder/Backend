@@ -22,8 +22,8 @@ import java.util.List;
  * 결제 대기 만료 (rules.py JOBS: 1분마다, PENDING_PAYMENT · expires_at 지남 → EXPIRED + 이력 → OrderExpired).
  *
  * <p><b>알려진 한계</b>: 원본 조건은 "UNKNOWN 시도 없음 · 마지막 READY 시도 후 10분 지남"까지 포함하지만,
- * 실제 PG 연동은 아직 없다. dev 흐름에서는 FAKE 시도를 저장하며 만료 시 READY를 FAILED로 닫는다.
- * 실제 MS-27을 구현할 때 UNKNOWN 결과 조회와 마지막 READY 유예 조건을 마저 채워야 한다.
+ * dev 흐름에서는 만료 시 FAKE READY를 FAILED로 닫는다. PortOne의 READY/UNKNOWN은 보존하고
+ * 별도 대사 작업이 늦게 확인된 결제를 환불한다. 새 결제 시도 추가와 마지막 READY 유예 조건은 후속 범위다.
  */
 @Component
 public class OrderExpiryJob {

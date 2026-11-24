@@ -36,5 +36,6 @@ public abstract class AbstractIntegrationTest {
         registry.add("spring.datasource.password", MYSQL::getPassword);
         // 환불 작업은 각 테스트에서 직접 호출해 다른 Spring 컨텍스트의 대기 요청과 섞이지 않게 한다.
         registry.add("coffeul.payment.cancel.enabled", () -> "false");
+        registry.add("coffeul.payment.recovery.enabled", () -> "false");
     }
 }

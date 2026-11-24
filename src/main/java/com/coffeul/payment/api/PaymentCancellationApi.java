@@ -9,6 +9,8 @@ public interface PaymentCancellationApi {
 
     Cancellation requestStaffRejection(Long orderId, int amount, String reason);
 
+    Cancellation requestExpiredPayment(Long orderId, int amount);
+
     Optional<Cancellation> findByOrderId(Long orderId);
 
     record Cancellation(long cancellationId, String status, int amount) {
