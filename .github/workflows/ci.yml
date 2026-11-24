@@ -5,12 +5,14 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    # develop은 테스트가 통과하면 개발 서버(api.orso.it.kr)에 자동 배포한다 — 아래 deploy 작업.
+    branches: [main, develop]
 
 # 같은 브랜치에 연달아 push하면 이전 실행을 취소한다 — 러너 시간을 아끼고 결과도 최신 것만 남는다.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # develop은 취소하지 않는다 — 배포 도중에 다음 push가 와도 앞 배포를 끝낸 뒤 순서대로 돈다.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/develop' }}
 
 jobs:
   test:
@@ -43,3 +45,50 @@ jobs:
           name: surefire-reports
           path: target/surefire-reports/
           retention-days: 7
+
+  # develop에 머지되고 위 테스트가 통과했을 때만 돈다. PR에서는 돌지 않는다.
+  # GitHub에는 AWS 키를 두지 않는다 — OIDC로 ormo-github-deploy 역할을 잠깐 빌리고,
+  # 그 역할은 개발 서버 한 대에 SSM 명령을 보내는 것만 할 수 있다(신뢰 조건: 이 레포의 develop).
+  # 서버에서는 deploy/deploy.sh가 빌드·교체·상태 확인을 하고, 실패하면 직전 이미지로 되돌린 뒤 실패로 끝난다.
+  deploy:
+    name: 개발 서버 배포
+    needs: test
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: AWS 역할 빌리기 (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ap-northeast-2
+
+      - name: 서버에서 deploy.sh 실행
+        env:
+          INSTANCE_ID: ${{ vars.DEV_INSTANCE_ID }}
+          SHA: ${{ github.sha }}
+        run: |
+          CID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "deploy $SHA (run $GITHUB_RUN_ID)" \
+            --timeout-seconds 1500 \
+            --parameters "commands=['/opt/ormo/Backend/deploy/deploy.sh $SHA 2>&1 | grep -v Extracting | tail -60; exit \${PIPESTATUS[0]}']" \
+            --query Command.CommandId --output text)
+          echo "SSM command: $CID"
+          STATUS=Pending
+          for i in $(seq 1 170); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$CID" --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in Pending|InProgress|Delayed) sleep 10 ;; *) break ;; esac
+          done
+          aws ssm get-command-invocation --command-id "$CID" --instance-id "$INSTANCE_ID" --query StandardOutputContent --output text
+          aws ssm get-command-invocation --command-id "$CID" --instance-id "$INSTANCE_ID" --query StandardErrorContent --output text >&2
+          echo "결과: $STATUS"
+          [ "$STATUS" = "Success" ]
+
+      - name: 바깥에서 상태 확인
+        run: curl --fail --silent --show-error --max-time 15 https://api.orso.it.kr/actuator/health

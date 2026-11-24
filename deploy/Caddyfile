@@ -1,0 +1,5 @@
+# 인증서는 Caddy가 Let's Encrypt에서 자동 발급·갱신한다.
+api.orso.it.kr {
+	encode gzip
+	reverse_proxy backend:8080
+}
