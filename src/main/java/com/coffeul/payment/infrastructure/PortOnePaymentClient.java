@@ -16,6 +16,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.net.http.HttpClient;
 import java.util.Map;
+import java.util.Optional;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.time.Duration;
 import java.time.Instant;
@@ -53,6 +54,36 @@ public class PortOnePaymentClient {
     public record PaidPayment(String paymentId, String transactionId, String storeId, String channelKey,
                               String provider, String version, String currency, long totalAmount,
                               String method, Instant paidAt) { }
+
+    public record CheckoutState(String status, String paymentId, String storeId, String channelKey,
+                                String provider, String version, String currency, long totalAmount) { }
+
+    /** 상태만 확인한다. READY/FAILED를 결제 승인으로 해석하지 않는다. */
+    public Optional<CheckoutState> getCheckoutState(String paymentId, String storeId) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("RETRY_LOOKUP_REQUIRES_NO_TRANSACTION");
+        }
+        try {
+            JsonNode body = client.get().uri("/payments/{paymentId}?storeId={storeId}", paymentId, storeId)
+                    .retrieve()
+                    .onStatus(status -> status.value() == 404, (request, response) -> {
+                        throw new BusinessException(PaymentErrorCode.NOT_PAID);
+                    })
+                    .onStatus(status -> !status.is2xxSuccessful(), (request, response) -> {
+                        throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+                    }).body(JsonNode.class);
+            if (body == null) throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+            JsonNode channel = body.path("channel");
+            return Optional.of(new CheckoutState(requiredText(body, "status"), requiredText(body, "id"),
+                    requiredText(body, "storeId"), requiredText(channel, "key"), requiredText(channel, "pgProvider"),
+                    requiredText(body, "version"), requiredText(body, "currency"), requiredAmount(body.path("amount"), "total")));
+        } catch (BusinessException error) {
+            if (error.errorCode() == PaymentErrorCode.NOT_PAID) return Optional.empty();
+            throw error;
+        } catch (RestClientException error) {
+            throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+        }
+    }
 
     public PaidPayment getPaidPayment(String paymentId, String storeId) {
         try {

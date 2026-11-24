@@ -2,6 +2,7 @@ package com.coffeul.payment.infrastructure;
 
 import com.coffeul.payment.api.PortOneMerchantConfigPort;
 import com.coffeul.payment.api.PortOnePaymentApi.Attempt;
+import com.coffeul.payment.api.PortOnePaymentApi.RetryAttempt;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -54,6 +55,24 @@ public class PortOnePaymentRepository {
 
     public Optional<Attempt> findForUpdate(Long orderId, String paymentId) {
         return find(orderId, paymentId, true);
+    }
+
+    public Optional<RetryAttempt> findCurrent(long orderId, boolean lock) {
+        return jdbc.query("""
+                SELECT id, order_id, pg_order_id, status, amount, portone_store_id, portone_channel_key,
+                    method, approved_at, attempt_no FROM payment
+                WHERE order_id = ? AND pg_provider = ? ORDER BY attempt_no DESC LIMIT 1
+                """ + (lock ? " FOR UPDATE" : ""),
+                (rs, row) -> new RetryAttempt(ATTEMPT_ROW.mapRow(rs, row), rs.getInt("attempt_no")),
+                orderId, PROVIDER).stream().findFirst();
+    }
+
+    public int resumeFailed(long id) {
+        return jdbc.update("""
+                UPDATE payment SET status = 'READY', failure_code = NULL, failure_message = NULL,
+                    failed_at = NULL, payment_key = NULL, approved_at = NULL, method = NULL, version = version + 1
+                WHERE id = ? AND status IN ('UNKNOWN','FAILED')
+                """, id);
     }
 
     private Optional<Attempt> find(Long orderId, String paymentId, boolean lock) {
