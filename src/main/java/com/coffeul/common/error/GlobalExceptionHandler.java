@@ -5,6 +5,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -44,6 +45,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>> handleNotFound() {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(CommonErrorCode.NOT_FOUND));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableBody() {
+        // 누락·타입 오류·깨진 JSON은 입력 오류다. 요청 본문이나 파싱 예외 원문을 응답/로그에 남기지 않는다.
+        return ResponseEntity.status(CommonErrorCode.VALIDATION_FAILED.status())
+                .body(ApiResponse.error(CommonErrorCode.VALIDATION_FAILED));
     }
 
     @ExceptionHandler(Exception.class)

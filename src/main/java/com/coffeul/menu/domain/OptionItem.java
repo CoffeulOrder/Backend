@@ -61,6 +61,10 @@ public class OptionItem {
         return soldOut;
     }
 
+    public void changeSoldOut(boolean soldOut) {
+        this.soldOut = soldOut;
+    }
+
     public int getSortOrder() {
         return sortOrder;
     }

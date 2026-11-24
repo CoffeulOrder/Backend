@@ -10,4 +10,6 @@ public interface OptionGroupRepository extends JpaRepository<OptionGroup, Long> 
     List<OptionGroup> findByMenuItemIdOrderBySortOrder(Long menuItemId);
 
     List<OptionGroup> findByMenuItemIdInOrderBySortOrder(List<Long> menuItemIds);
+
+    List<OptionGroup> findByMenuItemIdInOrderBySortOrderAscIdAsc(List<Long> menuItemIds);
 }
