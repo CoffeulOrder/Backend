@@ -263,6 +263,16 @@ public class Order {
     /** MS-23 매장 거절: 접수 대기 주문을 사유와 함께 거절한다. */
     public void reject(Instant now, OrderRejectReason reason, String detail) {
         requireStatus(STATUS_REQUESTED);
+        recordRejection(now, reason, detail);
+    }
+
+    /** PG 결제가 확인됐지만 품절·마감 등으로 접수할 수 없을 때 시스템이 환불과 함께 거절한다. */
+    public void rejectBeforePlacement(Instant now, OrderRejectReason reason, String detail) {
+        requireStatus(STATUS_PENDING_PAYMENT);
+        recordRejection(now, reason, detail);
+    }
+
+    private void recordRejection(Instant now, OrderRejectReason reason, String detail) {
         status = STATUS_REJECTED;
         rejectedAt = now;
         rejectReasonCode = reason.name();

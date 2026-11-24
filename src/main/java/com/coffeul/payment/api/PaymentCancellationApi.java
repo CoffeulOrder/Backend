@@ -11,6 +11,8 @@ public interface PaymentCancellationApi {
 
     Cancellation requestExpiredPayment(Long orderId, int amount);
 
+    Cancellation requestUnplaceablePayment(Long orderId, int amount, String reason);
+
     Optional<Cancellation> findByOrderId(Long orderId);
 
     record Cancellation(long cancellationId, String status, int amount) {

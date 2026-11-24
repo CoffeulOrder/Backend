@@ -19,18 +19,19 @@ public class PaymentRecoveryRepository implements PaymentRecoveryApi {
     }
 
     @Override
-    public void discover(Instant now, int limit) {
+    public void discover(Instant now, Instant pendingCreatedBefore, int limit) {
         jdbc.update("""
                 INSERT INTO payment_reconciliation (payment_id, next_retry_at)
                 SELECT p.id, ? FROM payment p JOIN orders o ON o.id = p.order_id
                 LEFT JOIN payment_reconciliation r ON r.payment_id = p.id
                 LEFT JOIN payment_cancel c ON c.payment_id = p.id
                 WHERE p.pg_provider = 'INICIS_V2' AND p.status IN ('READY', 'UNKNOWN', 'APPROVED')
-                    AND (o.status = 'EXPIRED' OR (o.status = 'PENDING_PAYMENT' AND o.expires_at <= ?))
+                    AND (o.status = 'EXPIRED' OR (o.status = 'PENDING_PAYMENT'
+                        AND (o.expires_at <= ? OR p.created_at <= ?)))
                     AND r.payment_id IS NULL AND c.id IS NULL
                 ORDER BY p.id LIMIT ?
                 ON DUPLICATE KEY UPDATE payment_id = payment_reconciliation.payment_id
-                """, utc(now), utc(now), limit);
+                """, utc(now), utc(now), utc(pendingCreatedBefore), limit);
     }
 
     @Override
@@ -50,10 +51,12 @@ public class PaymentRecoveryRepository implements PaymentRecoveryApi {
             return Optional.empty();
         }
         return jdbc.query("""
-                SELECT r.payment_id, p.order_id, p.pg_order_id, r.attempt_count
-                FROM payment_reconciliation r JOIN payment p ON p.id = r.payment_id WHERE r.payment_id = ?
+                SELECT r.payment_id, p.order_id, p.pg_order_id, r.attempt_count, o.status AS order_status, o.expires_at
+                FROM payment_reconciliation r JOIN payment p ON p.id = r.payment_id
+                JOIN orders o ON o.id = p.order_id WHERE r.payment_id = ?
                 """, (rs, row) -> new Claim(rs.getLong("payment_id"), rs.getLong("order_id"),
-                rs.getString("pg_order_id"), rs.getInt("attempt_count")), paymentId).stream().findFirst();
+                rs.getString("pg_order_id"), rs.getInt("attempt_count"), rs.getString("order_status"),
+                rs.getObject("expires_at", LocalDateTime.class).toInstant(ZoneOffset.UTC)), paymentId).stream().findFirst();
     }
 
     @Override

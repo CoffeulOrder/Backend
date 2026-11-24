@@ -178,7 +178,7 @@ class PaymentCancellationIntegrationTest extends AbstractIntegrationTest {
 
     @ParameterizedTest
     @CsvSource({"CUSTOMER,REJECTED", "STAFF,CANCELED", "CUSTOMER,REQUESTED", "STAFF,REQUESTED",
-            "SYSTEM,CANCELED", "SYSTEM,REJECTED"})
+            "SYSTEM,CANCELED", "SYSTEM,ACCEPTED"})
     void invalidActorStatePairIsSkippedByBothDueQueryAndClaim(String actor, String orderStatus) {
         long order = approved("FAKE");
         var cancellation = queue(order);
