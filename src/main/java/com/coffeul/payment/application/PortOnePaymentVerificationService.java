@@ -37,6 +37,53 @@ public class PortOnePaymentVerificationService implements PortOnePaymentApi {
     }
 
     @Override
+    public RetryAttempt findCurrentAttempt(Long orderId) {
+        return repository.findCurrent(orderId, false)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.ATTEMPT_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public RetryAttempt lockCurrentAttempt(Long orderId) {
+        return repository.findCurrent(orderId, true)
+                .orElseThrow(() -> new BusinessException(PaymentErrorCode.ATTEMPT_NOT_FOUND));
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.NEVER)
+    public RetryState inspectRetry(Attempt attempt) {
+        if (!StringUtils.hasText(attempt.storeId()) || !StringUtils.hasText(attempt.channelKey())) {
+            throw new BusinessException(PaymentErrorCode.SETUP_NOT_READY);
+        }
+        var payment = client.getCheckoutState(attempt.paymentId(), attempt.storeId());
+        if (payment.isEmpty()) return RetryState.NOT_FOUND;
+        var state = payment.get();
+        if (!attempt.paymentId().equals(state.paymentId()) || !attempt.storeId().equals(state.storeId())
+                || !attempt.channelKey().equals(state.channelKey()) || !"INICIS_V2".equals(state.provider())
+                || !"V2".equals(state.version()) || !"KRW".equals(state.currency())) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+        }
+        if (attempt.amount() != state.totalAmount()) {
+            throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
+        }
+        return switch (state.status()) {
+            case "READY" -> RetryState.READY;
+            case "FAILED" -> RetryState.FAILED;
+            case "PAID" -> RetryState.PAID;
+            case "CANCELLED", "PARTIAL_CANCELLED" -> RetryState.CANCELED;
+            default -> RetryState.WAITING;
+        };
+    }
+
+    @Override
+    @Transactional(propagation = Propagation.MANDATORY)
+    public void resumeFailedAttempt(Attempt attempt) {
+        if (repository.resumeFailed(attempt.id()) != 1) {
+            throw new BusinessException(PaymentErrorCode.INVALID_STATE);
+        }
+    }
+
+    @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public Attempt lockAttempt(Long orderId, String paymentId) {
         return repository.findForUpdate(orderId, paymentId)

@@ -18,7 +18,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * 결제 대기 만료 작업 검증 (rules.py JOBS: PENDING_PAYMENT · expires_at 지남 → EXPIRED + 이력).
- * MS-27이 아직 없어 "UNKNOWN 시도 없음 · 마지막 READY 후 10분" 조건은 다루지 않는다 (OrderExpiryJob 참고).
+ * READY 유예 정책 등의 범위는 OrderExpiryJob 주석을 참고한다.
  */
 class OrderExpiryJobTest extends AbstractIntegrationTest {
 
@@ -50,7 +50,8 @@ class OrderExpiryJobTest extends AbstractIntegrationTest {
 
         int expired = orderExpiryJob.expireOverdue(Instant.now());
 
-        assertThat(expired).isEqualTo(1);
+        // 전체 테스트가 MySQL을 공유하므로 다른 시나리오의 기한 지난 주문도 함께 처리될 수 있다.
+        assertThat(expired).isGreaterThanOrEqualTo(1);
         Map<String, Object> orderRow = jdbcTemplate.queryForMap("SELECT * FROM `orders` WHERE `id` = ?", orderId);
         assertThat(orderRow.get("status")).isEqualTo("EXPIRED");
         assertThat(orderRow.get("expired_at")).isNotNull();
@@ -68,10 +69,11 @@ class OrderExpiryJobTest extends AbstractIntegrationTest {
     void 아직_만료_시간이_안된_주문은_건드리지_않는다() {
         long orderId = fixtures.createOrder(memberId, storeId, schoolId, "PENDING_PAYMENT");
 
-        int expired = orderExpiryJob.expireOverdue(Instant.now());
-
-        assertThat(expired).isEqualTo(0);
+        orderExpiryJob.expireOverdue(Instant.now());
         String status = jdbcTemplate.queryForObject("SELECT `status` FROM `orders` WHERE `id` = ?", String.class, orderId);
         assertThat(status).isEqualTo("PENDING_PAYMENT");
+        assertThat(jdbcTemplate.queryForObject("SELECT expired_at FROM orders WHERE id=?", Object.class, orderId)).isNull();
+        assertThat(jdbcTemplate.queryForObject("SELECT COUNT(*) FROM order_status_history WHERE order_id=? AND to_status='EXPIRED'",
+                Integer.class, orderId)).isZero();
     }
 }

@@ -139,6 +139,11 @@ class OrderCancelIntegrationTest extends AbstractIntegrationTest {
         cancel(orderId, customer).andExpect(status().isOk())
                 .andExpect(jsonPath("$.data.refundStatus").value("FAILED"))
                 .andExpect(jsonPath("$.message").value("주문은 취소됐어요. 환불 처리에 확인이 필요해요."));
+        mvc.perform(get("/api/v1/orders/{id}/payment", orderId).header("Authorization", customer))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.data.orderStatus").value("CANCELED"))
+                .andExpect(jsonPath("$.data.payment.pgProvider").value("FAKE"))
+                .andExpect(jsonPath("$.data.retryAvailable").value(false))
+                .andExpect(jsonPath("$.data.refund.status").value("FAILED"));
         assertThat(refundCount(orderId)).isEqualTo(1);
     }
 

@@ -14,6 +14,18 @@ public interface PortOnePaymentApi {
 
     void recordApproval(Attempt attempt, Approval approval);
 
+    RetryAttempt findCurrentAttempt(Long orderId);
+
+    RetryAttempt lockCurrentAttempt(Long orderId);
+
+    RetryState inspectRetry(Attempt attempt);
+
+    void resumeFailedAttempt(Attempt attempt);
+
+    record RetryAttempt(Attempt attempt, int attemptNo) { }
+
+    enum RetryState { NOT_FOUND, READY, FAILED, PAID, WAITING, CANCELED }
+
     record Attempt(long id, long orderId, String paymentId, String status, int amount, String storeId, String channelKey,
                    String method, Instant approvedAt) {
         public boolean approved() {

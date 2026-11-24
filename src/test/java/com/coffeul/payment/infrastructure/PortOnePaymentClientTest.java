@@ -69,6 +69,49 @@ class PortOnePaymentClientTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = {"READY", "FAILED", "PAID", "PENDING", "CANCELLED", "NEW_FUTURE_STATE"})
+    void checkoutStateLookupPreservesStatusAndPaymentContext(String status) {
+        server.expect(requestTo(URL)).andExpect(method(HttpMethod.GET))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "PortOne unit-test-placeholder"))
+                .andRespond(withSuccess(PAID.replace("\"PAID\"", "\"" + status + "\""), MediaType.APPLICATION_JSON));
+        assertThat(client.getCheckoutState("payment-test", "store-test")).contains(
+                new PortOnePaymentClient.CheckoutState(status, "payment-test", "store-test", "channel-test",
+                        "INICIS_V2", "V2", "KRW", 4500));
+        server.verify();
+    }
+
+    @Test
+    void checkoutNotFoundIsDistinctFromProviderFailure() {
+        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.NOT_FOUND));
+        server.expect(requestTo(URL)).andRespond(withStatus(HttpStatus.SERVICE_UNAVAILABLE));
+        assertThat(client.getCheckoutState("payment-test", "store-test")).isEmpty();
+        assertThatExceptionOfType(BusinessException.class).isThrownBy(() -> client.getCheckoutState("payment-test", "store-test"))
+                .satisfies(error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.LOOKUP_UNAVAILABLE));
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"4500.5", "\"4500\"", "null", "-1"})
+    void malformedRetryAmountCannotOpenCheckout(String amount) {
+        server.expect(requestTo(URL)).andRespond(withSuccess(PAID.replace("4500", amount), MediaType.APPLICATION_JSON));
+        assertThatExceptionOfType(BusinessException.class).isThrownBy(() -> client.getCheckoutState("payment-test", "store-test"))
+                .satisfies(error -> assertThat(error.errorCode()).isEqualTo(PaymentErrorCode.LOOKUP_UNAVAILABLE));
+        server.verify();
+    }
+
+    @Test
+    void retryLookupRejectsDatabaseTransactionBeforeHttpCall() {
+        org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            org.assertj.core.api.Assertions.assertThatIllegalStateException()
+                    .isThrownBy(() -> client.getCheckoutState("payment-test", "store-test"));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.setActualTransactionActive(false);
+        }
+        server.verify();
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = {"4500.5", "\"4500\"", "null"})
     void malformedAmountDoesNotGetCoerced(String amount) {
         server.expect(requestTo(URL)).andRespond(withSuccess(PAID.replace("4500", amount), MediaType.APPLICATION_JSON));

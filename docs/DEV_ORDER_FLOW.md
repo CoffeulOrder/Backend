@@ -68,7 +68,7 @@ coffeul.payment.gateway=fake
 ## 아직 남은 작업
 
 - 실제 KG이니시스/PortOne 계약·테스트/실결제 채널·심사 결과 확인, SDK/WebView 방식·필드 계약 확정.
-- 테스트 채널에서 실제 PG 조회·확정과 서명된 웹훅 수신, 고객 취소·매장 거절·만료 주문의 실제 전액 환불을 검증한다. 새 결제 시도를 만드는 결제 재시도와 수락 후 매장 환불은 후속 작업이다.
+- 테스트 채널에서 실제 PG 조회·확정과 서명된 웹훅 수신, 고객 취소·매장 거절·만료 주문의 실제 전액 환불, 같은 결제번호의 결제창 재개를 검증한다. 수락 후 매장 환불은 후속 작업이다.
 - 고객 앱의 메뉴 상세·옵션 조회는 `GET /api/v1/stores/{storeId}/menus/{menuId}`와 연동해 기기에서 검증한다.
 - 실제 고객 앱·사장님 앱의 서버 연결과 기기 검증, CORS, 푸시 실제 발송.
 - 기본 주문 상태는 기존 ACCEPTED/MAKING 분리를 유지한다. 닉네임·PIN·미수령·REFUNDED·관리자 웹 정책은 별도 합의 후 반영한다.
@@ -148,7 +148,40 @@ KG이니시스 테스트 채널의 실제 환불 검증은 환경 전환 후 진
 | `coffeul.payment.recovery.interval-ms` | `60000` | 주기 실행 간격 |
 | `coffeul.payment.recovery.initial-delay-ms` | `60000` | 시작 후 첫 실행 대기 |
 
-미결제·결제 미확인 건을 임의로 완료 처리하지 않고 재조회한다. 이 경로는 저장된 결제 시도를 조회하는 기능이며 새 결제 시도를 만드는 API와는 별도다. 실제 테스트 채널 환불은 아직 검증하지 않았다.
+미결제·결제 미확인 건을 임의로 완료 처리하지 않고 재조회한다. 이 경로는 저장된 결제 시도를 조회하는 기능이며 아래 고객의 결제창 재개 요청과는 별도다. 실제 테스트 채널 환불은 아직 검증하지 않았다.
+
+## 결제 상태 조회·결제창 재개 — MS-28·29
+
+### 결제·환불 상태 조회
+
+고객 Bearer로 `GET /api/v1/orders/{orderId}/payment`를 호출한다. 본인 주문과 활성 계정을 검사하며 실제 PG를 호출하거나 상태를 바꾸지 않는다. FAKE와 PortOne 모두 사용할 수 있다.
+
+- `data`는 `orderId`, `orderStatus`, `expiresAt`, `pickupNo`, `retryAvailable`, `payment`, `refund`를 포함한다.
+- `payment`에는 현재 결제의 `attemptNo`, `pgProvider`, `pgOrderId`, `status`, `amount`, `method`, `approvedAt`, `canceledAt`가 있다. 결제 준비 기록이 없으면 null이다.
+- `refund`는 없으면 null이고, 있으면 `status`, `amount`, `succeededAt`를 포함한다. FAILED는 담당자 확인이 필요한 상태로 표시한다.
+- `retryAvailable`은 서버에 저장된 상태 기준으로 재시도 버튼을 표시할지 판단하는 값이다. 실제 결제창을 다시 열기 전에는 아래 POST로 PG 상태를 확인해야 한다. UNKNOWN은 버튼을 비활성화하고 상태를 확인한다.
+- 결제 거래 키·시크릿 참조·채널 키·PG 오류 원문은 조회 응답에 넣지 않는다.
+
+### 기존 결제번호로 결제창 다시 열기
+
+고객 Bearer로 `POST /api/v1/orders/{orderId}/payment-attempts`를 호출한다. 본문과 새 멱등 키는 필요 없다. 기존 명세의 PG 미확정 시점 결제번호 교체 제안은 현재 PortOne 구현에 그대로 적용하지 않는다. 저장된 동일 `paymentId`를 유지하며 새 payment 행을 만들지 않는다. `attemptNo`도 기존 행의 값이다.
+
+응답은 HTTP 200이며 `data.action`에 따라 처리한다.
+
+| action | 앱 처리 |
+| --- | --- |
+| `OPEN_CHECKOUT` | `data.payment`의 `pgOrderId`, `orderName`, `amount`, `portOne`으로 결제창을 다시 연다. 기존 결제번호·금액·상점·채널을 유지한다. |
+| `VIEW_ORDER` | 결제창을 열지 않고 현재 주문 상세로 이동한다. 이미 접수된 주문 또는 PG 결제 확인 후 접수한 주문이다. `data.payment`은 null이다. |
+
+- PG가 `READY`이거나 아직 결제 기록이 없고 로컬이 READY이면 같은 번호의 결제창을 다시 열 수 있다. PG가 FAILED이면 같은 번호를 유지해 재개한다.
+- 로컬 UNKNOWN·FAILED는 PG의 FAILED가 검증돼야 READY로 복구한다. 단순 404·READY 조회만으로 결과 불명을 해제하지 않는다. PG의 진행 중·알 수 없는 상태는 `409/PY012`, 취소된 결제는 `409/PY008`로 결제창 재개를 막는다.
+- PG PAID는 기존 결제 확인 경로로 검증·접수한 뒤 VIEW_ORDER를 반환한다. 조회 중 주문이 만료되면 기존 전액 환불 복구 경로를 사용하고 `409/OD009`와 환불 상태를 반환한다.
+- PG 조회 오류는 `503/PY010`, 금액 불일치는 `400/PY001`, 식별 정보 불일치는 `409/PY011`이다. 실패 응답만으로 앱이 결제창을 열면 안 된다.
+- PG 조회는 DB 트랜잭션 밖에서 수행한다. 조회 후 주문을 다시 잠가 본인·계정·기한·결제 식별 정보와 매장/품절을 확인한다. 조회 중 먼저 접수됐으면 VIEW_ORDER를 반환한다. 만료 기한을 늘리지 않는다.
+
+재개 결과의 `data.payment.portOne`은 최초 주문 생성과 동일한 형식이다. 재개 요청 직후에도 상태가 바뀔 수 있으므로 SDK 결과·웹훅·서버 확인을 통해 최종 결과를 확인한다. 같은 paymentId의 실제 KG이니시스 실패/이탈 후 재개는 테스트 채널에서 추가 검증한다.
+
+설계 참고: [PortOne SDK paymentId 요청 규칙](https://developers.portone.io/sdk/ko/v2-sdk/payment-request?v=v2), [서버 결제 조회·검증](https://developers.portone.io/opi/ko/integration/start/v2/checkout).
 
 ## 실행 검증
 
@@ -162,10 +195,11 @@ Colima 사용 시 JAVA_HOME(Java21), DOCKER_HOST, TESTCONTAINERS_DOCKER_SOCKET_O
 `DevOrderFlowIntegrationTest`는 실제 로그인·주문 생성·승인·사장님 처리·픽업 API를 호출하며, 주문 상태를 테스트 픽스처로 강제 승격하지 않는다.
 `DevPaymentActivationTest`는 dev opt-in·prod 제외 조건을, `PersistentFakePaymentServiceTest`는 실제 게이트웨이 모드에서 가짜 승인이 막히는지 검증한다.
 
-2026-11-23 취소·거절·만료 결제 복구 통합 검증: Java 21·실제 MySQL 8.4·UTC JVM 전체 341건 통과, 실패·오류·스킵 0.
+2026-11-24 결제창 재개·결제 상태 조회 통합 검증: Java 21·Colima의 실제 MySQL 8.4·UTC JVM 전체 388건 통과, 실패·오류·스킵 0.
 주문 생성·가짜 승인부터 고객 취소/매장 거절·전액 환불 상태 조회까지 검증했다.
 동시 수락·취소·거절, 중복 거절 재조회, 권한·비활성 직원, PG 취소의 주체·금액·멱등 키도 포함한다.
 만료 후 앱 확인·웹훅·주기 재조회, 동시 복구, 리스 만료·오래된 결과 차단, 미결제·일시 오류 재조회와 환불 저장 실패 롤백을 포함한다.
+결제창 재개는 PG 미등록·READY·FAILED·PAID·진행 중·취소·정보 불일치, 인증·계정·매장/품절, 조회 중 접수·만료·계정 정지 및 동시 요청을 포함한다. 상태 조회의 FAKE 지원·환불 FAILED 표시와 서버 내부 정보 제외도 검증했다.
 실제 KG이니시스 테스트 채널 환불과 앱 실기기 연동은 아직 검증하지 않았다.
 
 아래 결과는 초기 개발용 가짜 결제의 검증 기록이다.
