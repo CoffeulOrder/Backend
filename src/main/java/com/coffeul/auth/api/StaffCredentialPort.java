@@ -11,6 +11,10 @@ public interface StaffCredentialPort {
 
     Optional<StaffCredential> findById(Long staffId);
 
+    Optional<StaffCredential> findByLoginIdForUpdate(String loginId);
+
+    Optional<StaffCredential> findByIdForUpdate(Long staffId);
+
     void recordLoginSuccess(Long staffId, Instant now);
 
     /** 실패 1회를 반영한다. lockedUntil이 null이 아니면 이번 실패로 30초 대기까지 같이 건다. */

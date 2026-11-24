@@ -40,9 +40,9 @@ public class MemberLoginService {
     // 안 그러면 5회 실패 잠금이 매번 롤백돼서 절대 작동하지 않는다.
     @Transactional(noRollbackFor = BusinessException.class)
     public Result login(String email, String password) {
-        Instant now = Instant.now();
-        MemberCredential credential = memberCredentialPort.findByEmail(email)
+        MemberCredential credential = memberCredentialPort.findByEmailForUpdate(email)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS));
+        Instant now = Instant.now();
 
         if (credential.lockedUntil() != null && credential.lockedUntil().isAfter(now)) {
             throw BusinessException.withData(AuthErrorCode.LOCKED, AuthErrorCode.LOCKED.message(),

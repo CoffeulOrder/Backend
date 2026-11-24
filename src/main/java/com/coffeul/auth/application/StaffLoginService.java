@@ -48,9 +48,9 @@ public class StaffLoginService {
     // 안 그러면 30초 대기가 매번 롤백돼서 절대 작동하지 않는다.
     @Transactional(noRollbackFor = BusinessException.class)
     public Result login(String loginId, String password) {
-        Instant now = Instant.now();
-        StaffCredential credential = staffCredentialPort.findByLoginId(loginId)
+        StaffCredential credential = staffCredentialPort.findByLoginIdForUpdate(loginId)
                 .orElseThrow(() -> new BusinessException(AuthErrorCode.INVALID_CREDENTIALS, STAFF_INVALID_MESSAGE));
+        Instant now = Instant.now();
 
         if (credential.lockedUntil() != null && credential.lockedUntil().isAfter(now)) {
             throw BusinessException.withData(AuthErrorCode.LOCKED, STAFF_LOCK_MESSAGE,

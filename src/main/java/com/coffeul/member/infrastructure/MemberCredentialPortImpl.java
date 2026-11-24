@@ -32,6 +32,18 @@ public class MemberCredentialPortImpl implements MemberCredentialPort {
 
     @Override
     @Transactional
+    public Optional<MemberCredential> findByEmailForUpdate(String email) {
+        return memberRepository.findByEmailForUpdate(email).map(this::toCredential);
+    }
+
+    @Override
+    @Transactional
+    public Optional<MemberCredential> findByIdForUpdate(Long memberId) {
+        return memberRepository.findByIdForUpdate(memberId).map(this::toCredential);
+    }
+
+    @Override
+    @Transactional
     public void recordLoginSuccess(Long memberId, Instant now) {
         memberRepository.findById(memberId).ifPresent(member -> member.recordLoginSuccess(now));
     }

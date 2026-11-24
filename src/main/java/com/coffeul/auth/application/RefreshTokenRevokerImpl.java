@@ -1,6 +1,7 @@
 package com.coffeul.auth.application;
 
 import com.coffeul.auth.api.RefreshTokenRevoker;
+import com.coffeul.auth.api.MemberCredentialPort;
 import com.coffeul.auth.domain.RefreshToken;
 import com.coffeul.auth.infrastructure.RefreshTokenRepository;
 import org.springframework.stereotype.Service;
@@ -14,19 +15,22 @@ import java.util.List;
 public class RefreshTokenRevokerImpl implements RefreshTokenRevoker {
 
     private final RefreshTokenRepository refreshTokenRepository;
+    private final MemberCredentialPort members;
 
-    public RefreshTokenRevokerImpl(RefreshTokenRepository refreshTokenRepository) {
+    public RefreshTokenRevokerImpl(RefreshTokenRepository refreshTokenRepository, MemberCredentialPort members) {
         this.refreshTokenRepository = refreshTokenRepository;
+        this.members = members;
     }
 
     @Override
     @Transactional
     public int revokeAllForMember(Long memberId) {
+        members.findByIdForUpdate(memberId);
         Instant now = Instant.now();
         List<RefreshToken> alive =
-                refreshTokenRepository.findBySubjectTypeAndSubjectIdAndRevokedAtIsNull("MEMBER", memberId);
-        // 정상 회전이 아니라 강제 폐기다 — 30초 유예 창으로 되살아나지 않게 만료 시각도 같이 당긴다.
-        alive.forEach(token -> token.revokeDueToReuse(now));
+                refreshTokenRepository.findUnexpiredSubjectForUpdate("MEMBER", memberId, now);
+        // 직전에 회전한 선행 토큰도 포함해야 30초 유예로 세션이 되살아나지 않는다.
+        alive.forEach(token -> token.invalidate(now));
         return alive.size();
     }
 }
