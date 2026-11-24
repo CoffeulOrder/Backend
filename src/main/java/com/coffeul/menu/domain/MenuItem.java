@@ -77,6 +77,10 @@ public class MenuItem {
         return soldOut;
     }
 
+    public void changeSoldOut(boolean soldOut) {
+        this.soldOut = soldOut;
+    }
+
     public String getStatus() {
         return status;
     }

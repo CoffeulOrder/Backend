@@ -23,19 +23,26 @@ class MenuOptionReader {
     }
 
     List<GroupOptions> findGroups(Long menuId) {
-        List<OptionGroup> groups = optionGroupRepository.findByMenuItemIdOrderBySortOrder(menuId);
+        return findGroupsByMenuIds(List.of(menuId)).getOrDefault(menuId, List.of());
+    }
+
+    Map<Long, List<GroupOptions>> findGroupsByMenuIds(List<Long> menuIds) {
+        if (menuIds.isEmpty()) {
+            return Map.of();
+        }
+        List<OptionGroup> groups = optionGroupRepository.findByMenuItemIdInOrderBySortOrderAscIdAsc(menuIds);
         if (groups.isEmpty()) {
-            return List.of();
+            return Map.of();
         }
 
         List<Long> groupIds = groups.stream().map(OptionGroup::getId).toList();
-        Map<Long, List<OptionItem>> optionsByGroup = optionItemRepository.findByOptionGroupIdInOrderBySortOrder(groupIds)
+        Map<Long, List<OptionItem>> optionsByGroup = optionItemRepository.findByOptionGroupIdInOrderBySortOrderAscIdAsc(groupIds)
                 .stream()
                 .collect(Collectors.groupingBy(OptionItem::getOptionGroupId));
 
         return groups.stream()
                 .map(group -> new GroupOptions(group, optionsByGroup.getOrDefault(group.getId(), List.of())))
-                .toList();
+                .collect(Collectors.groupingBy(entry -> entry.group().getMenuItemId()));
     }
 
     record GroupOptions(OptionGroup group, List<OptionItem> options) {

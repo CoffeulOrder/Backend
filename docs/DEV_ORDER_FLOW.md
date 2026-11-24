@@ -207,3 +207,9 @@ Colima 사용 시 JAVA_HOME(Java21), DOCKER_HOST, TESTCONTAINERS_DOCKER_SOCKET_O
 최종 검증(2026-11-10): 전체 180건 통과, 실패·오류·스킵 0. MySQL 8.4/UTC JVM, 모듈 경계 검사 포함.
 `docker compose config --quiet`, `sh -n docker/dev-seed/run.sh`, `git diff --check`도 통과했다.
 실제 Compose 컨테이너를 새로 배포하거나 고객/사장님 앱 기기에서 실행한 결과는 아니다.
+
+## 사장님 품절 관리 — MS-12·13·14
+
+활성 사장님·배정 직원이 관리용 메뉴/옵션 목록을 조회하고 품절을 설정·해제한다.
+변경은 고객 메뉴 조회와 주문 생성·결제 확인의 기존 품절 검증에 반영된다.
+경로·응답·권한·오류와 FE 연결 기준, 이 독립 브랜치의 검증 결과는 [사장님 품절 관리 API](STAFF_MENU_API.md)에 있다.
