@@ -7,6 +7,7 @@ import com.coffeul.order.domain.OrderLineOption;
 import com.coffeul.order.infrastructure.OrderLineOptionRepository;
 import com.coffeul.order.infrastructure.OrderLineRepository;
 import com.coffeul.order.infrastructure.OrderRepository;
+import com.coffeul.payment.api.PaymentCancellationApi;
 import com.coffeul.store.api.StoreQueryApi;
 import com.coffeul.store.api.StoreView;
 import org.springframework.data.domain.PageRequest;
@@ -44,15 +45,17 @@ public class OrderQueryService {
     private final OrderLineRepository orderLineRepository;
     private final OrderLineOptionRepository orderLineOptionRepository;
     private final StoreQueryApi storeQueryApi;
+    private final PaymentCancellationApi cancellations;
 
     public OrderQueryService(OrderRepository orderRepository,
                               OrderLineRepository orderLineRepository,
                               OrderLineOptionRepository orderLineOptionRepository,
-                              StoreQueryApi storeQueryApi) {
+                              StoreQueryApi storeQueryApi, PaymentCancellationApi cancellations) {
         this.orderRepository = orderRepository;
         this.orderLineRepository = orderLineRepository;
         this.orderLineOptionRepository = orderLineOptionRepository;
         this.storeQueryApi = storeQueryApi;
+        this.cancellations = cancellations;
     }
 
     public record ListItem(Long orderId, String orderCode, String storeName, String status, Short pickupNo,
@@ -89,7 +92,8 @@ public class OrderQueryService {
     public record DetailLine(String menuName, List<String> options, int unitPrice, int quantity, int lineAmount) {
     }
 
-    public record Detail(Order order, String storeName, Long aheadCount, boolean cancelable, List<DetailLine> items) {
+    public record Detail(Order order, String storeName, Long aheadCount, boolean cancelable, List<DetailLine> items,
+                         String refundStatus) {
     }
 
     /** MS-18. 없는 주문과 남의 주문은 구분하지 않고 같은 404(OD005)로 답한다 — 남의 주문 존재를 드러내지 않는다. */
@@ -107,7 +111,10 @@ public class OrderQueryService {
         // 고객이 취소할 수 있는 건 매장이 아직 수락하지 않은 REQUESTED뿐이다(명세 memo).
         boolean cancelable = Order.STATUS_REQUESTED.equals(order.getStatus());
 
-        return new Detail(order, storeNameOf(order.getStoreId()), aheadCount, cancelable, linesOf(order.getId()));
+        String refundStatus = Order.STATUS_CANCELED.equals(order.getStatus()) || Order.STATUS_REJECTED.equals(order.getStatus())
+                ? cancellations.findByOrderId(orderId).map(PaymentCancellationApi.Cancellation::status).orElse(null)
+                : null;
+        return new Detail(order, storeNameOf(order.getStoreId()), aheadCount, cancelable, linesOf(order.getId()), refundStatus);
     }
 
     private String storeNameOf(Long storeId) {

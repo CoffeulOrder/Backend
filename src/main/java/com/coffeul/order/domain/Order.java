@@ -96,15 +96,18 @@ public class Order {
     @Column(name = "expired_at")
     private Instant expiredAt;
 
-    /** 고객 취소(MS-19) · 매장 거절(MS-23)이 채우는 값. 지금은 조회(MS-17 · MS-18)만 하므로 읽기 전용이다. */
-    @Column(name = "canceled_at", insertable = false, updatable = false)
+    /** 고객 취소(MS-19) 시 기록하는 시각. */
+    @Column(name = "canceled_at")
     private Instant canceledAt;
 
-    @Column(name = "rejected_at", insertable = false, updatable = false)
+    @Column(name = "rejected_at")
     private Instant rejectedAt;
 
-    @Column(name = "reject_reason_code", length = 30, insertable = false, updatable = false)
+    @Column(name = "reject_reason_code", length = 30)
     private String rejectReasonCode;
+
+    @Column(name = "reject_reason_detail", length = 200)
+    private String rejectReasonDetail;
 
     /** DB 기본값(CURRENT_TIMESTAMP)이 채운다. 내 주문 목록의 정렬 기준(idx_orders_member_created). */
     @Column(name = "created_at", insertable = false, updatable = false)
@@ -226,6 +229,10 @@ public class Order {
         return rejectReasonCode;
     }
 
+    public String getRejectReasonDetail() {
+        return rejectReasonDetail;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
@@ -244,6 +251,22 @@ public class Order {
         requireStatus(STATUS_REQUESTED);
         status = STATUS_ACCEPTED;
         acceptedAt = now;
+    }
+
+    /** MS-19 고객 취소: 매장이 수락하기 전 REQUESTED에서만 취소한다. */
+    public void cancel(Instant now) {
+        requireStatus(STATUS_REQUESTED);
+        status = STATUS_CANCELED;
+        canceledAt = now;
+    }
+
+    /** MS-23 매장 거절: 접수 대기 주문을 사유와 함께 거절한다. */
+    public void reject(Instant now, OrderRejectReason reason, String detail) {
+        requireStatus(STATUS_REQUESTED);
+        status = STATUS_REJECTED;
+        rejectedAt = now;
+        rejectReasonCode = reason.name();
+        rejectReasonDetail = detail;
     }
 
     /** MS-24 제조 시작: ACCEPTED → MAKING. */

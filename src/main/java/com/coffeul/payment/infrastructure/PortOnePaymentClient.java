@@ -15,6 +15,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.net.http.HttpClient;
+import java.util.Map;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
@@ -74,6 +76,137 @@ public class PortOnePaymentClient {
             // PG 원문에는 구매자 정보가 포함될 수 있으므로 응답이나 예외 본문을 노출하지 않는다.
             throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
         }
+    }
+
+    public record CancellationPayment(String paymentId, String transactionId, String storeId,
+                                      String channelKey, int amount) { }
+
+    /** Full refund only. A successful POST alone is insufficient proof of completion. */
+    public boolean cancelFullPayment(CancellationPayment payment, String idempotencyKey) {
+        return cancelFullPayment(payment, idempotencyKey, "CUSTOMER", "고객 요청");
+    }
+
+    public boolean cancelFullPayment(CancellationPayment payment, String idempotencyKey,
+                                     String requester, String reason) {
+        if (TransactionSynchronizationManager.isActualTransactionActive()) {
+            throw new IllegalStateException("CANCEL_IO_REQUIRES_NO_TRANSACTION");
+        }
+        if (payment.amount() <= 0 || !hasText(payment.paymentId()) || !hasText(payment.transactionId())
+                || !hasText(payment.storeId()) || !hasText(payment.channelKey())
+                || idempotencyKey == null || !idempotencyKey.matches("[A-Za-z0-9_-]{16,256}")
+                || !("CUSTOMER".equals(requester) || "ADMIN".equals(requester))
+                || !hasText(reason) || reason.length() > 200) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+        }
+        try {
+            JsonNode before = getCancellationPayment(payment);
+            if (fullyCancelled(before, payment)) {
+                return true;
+            }
+            requireUncancelledPayment(before);
+            // An asynchronous cancellation already exists. Poll it without creating another request.
+            if (hasPendingCancellation(before, payment.amount())) {
+                return false;
+            }
+            JsonNode result = client.post().uri("/payments/{paymentId}/cancel", payment.paymentId())
+                    .header("Idempotency-Key", "\"" + idempotencyKey + "\"")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("storeId", payment.storeId(), "reason", reason, "requester", requester,
+                            "amount", payment.amount(), "currentCancellableAmount", payment.amount()))
+                    .retrieve()
+                    .onStatus(status -> !status.is2xxSuccessful(), (request, response) -> {
+                        throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+                    }).body(JsonNode.class);
+            if (result == null) {
+                throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+            }
+            JsonNode cancellation = result.path("cancellation");
+            String status = cancellation.path("status").textValue();
+            if (!"SUCCEEDED".equals(status) && !"REQUESTED".equals(status)) {
+                throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+            }
+            if (requiredAmount(cancellation, "totalAmount") != payment.amount()) {
+                throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
+            }
+            requiredText(cancellation, "id");
+            // Also covers eventual consistency: a still-PAID response stays retryable.
+            JsonNode after = getCancellationPayment(payment);
+            if (fullyCancelled(after, payment)) {
+                return true;
+            }
+            requireUncancelledPayment(after);
+            return false;
+        } catch (RestClientException e) {
+            throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+        }
+    }
+
+    private JsonNode getCancellationPayment(CancellationPayment expected) {
+        JsonNode body = client.get().uri("/payments/{paymentId}?storeId={storeId}",
+                        expected.paymentId(), expected.storeId())
+                .retrieve().onStatus(status -> !status.is2xxSuccessful(), (request, response) -> {
+                    throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+                }).body(JsonNode.class);
+        if (body == null) {
+            throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+        }
+        JsonNode channel = body.path("channel");
+        if (!expected.paymentId().equals(requiredText(body, "id"))
+                || !expected.transactionId().equals(requiredText(body, "transactionId"))
+                || !expected.storeId().equals(requiredText(body, "storeId"))
+                || !expected.channelKey().equals(requiredText(channel, "key"))
+                || !"INICIS_V2".equals(requiredText(channel, "pgProvider"))
+                || !"V2".equals(requiredText(body, "version"))
+                || !"KRW".equals(requiredText(body, "currency"))) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+        }
+        if (requiredAmount(body.path("amount"), "total") != expected.amount()) {
+            throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
+        }
+        return body;
+    }
+
+    private boolean fullyCancelled(JsonNode body, CancellationPayment payment) {
+        if (!"CANCELLED".equals(body.path("status").textValue())) {
+            return false;
+        }
+        if (requiredAmount(body.path("amount"), "cancelled") != payment.amount()) {
+            throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
+        }
+        return true;
+    }
+
+    private void requireUncancelledPayment(JsonNode body) {
+        if (!"PAID".equals(body.path("status").textValue())) {
+            throw new BusinessException(PaymentErrorCode.PAYMENT_CONTEXT_MISMATCH);
+        }
+        if (requiredAmount(body.path("amount"), "cancelled") != 0) {
+            throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
+        }
+    }
+
+    private boolean hasPendingCancellation(JsonNode body, int amount) {
+        for (JsonNode cancellation : body.path("cancellations")) {
+            if ("REQUESTED".equals(cancellation.path("status").textValue())) {
+                if (requiredAmount(cancellation, "totalAmount") != amount) {
+                    throw new BusinessException(PaymentErrorCode.AMOUNT_MISMATCH);
+                }
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private long requiredAmount(JsonNode body, String key) {
+        JsonNode amount = body.path(key);
+        if (!amount.isIntegralNumber() || !amount.canConvertToLong() || amount.longValue() < 0) {
+            throw new BusinessException(PaymentErrorCode.LOOKUP_UNAVAILABLE);
+        }
+        return amount.longValue();
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 
     private PaidPayment readPaidPayment(JsonNode body) {
