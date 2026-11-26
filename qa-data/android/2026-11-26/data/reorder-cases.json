@@ -1,0 +1,363 @@
+[
+  {
+    "alias": "R1",
+    "orderId": 8510302001,
+    "account": "qa-reorder",
+    "storeAlias": "S01",
+    "status": "COMPLETED",
+    "lines": 2,
+    "totalAmount": 4500,
+    "pickupNo": 2066,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020122,
+        "menuAlias": "M0122",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 2500
+      },
+      {
+        "menuId": 8510020123,
+        "menuAlias": "M0123",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 2000
+      }
+    ],
+    "description": "주문 메뉴 전부 품절"
+  },
+  {
+    "alias": "R2",
+    "orderId": 8510302002,
+    "account": "qa-reorder",
+    "storeAlias": "S01",
+    "status": "COMPLETED",
+    "lines": 3,
+    "totalAmount": 7500,
+    "pickupNo": 2067,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020124,
+        "menuAlias": "M0124",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020125,
+        "menuAlias": "M0125",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020126,
+        "menuAlias": "M0126",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      }
+    ],
+    "description": "3줄 중 1줄만 품절"
+  },
+  {
+    "alias": "R3",
+    "orderId": 8510302003,
+    "account": "qa-reorder",
+    "storeAlias": "S01",
+    "status": "COMPLETED",
+    "lines": 2,
+    "totalAmount": 4500,
+    "pickupNo": 2068,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020127,
+        "menuAlias": "M0127",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 2500
+      },
+      {
+        "menuId": 8510020128,
+        "menuAlias": "M0128",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 2000
+      }
+    ],
+    "description": "한 메뉴 HIDDEN; FK 보존"
+  },
+  {
+    "alias": "R4",
+    "orderId": 8510302004,
+    "account": "qa-reorder",
+    "storeAlias": "S01",
+    "status": "COMPLETED",
+    "lines": 1,
+    "totalAmount": 3000,
+    "pickupNo": 2069,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020129,
+        "menuAlias": "M0129",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3000
+      }
+    ],
+    "description": "주문 뒤 기본가 +1000원"
+  },
+  {
+    "alias": "R5",
+    "orderId": 8510302005,
+    "account": "qa-reorder",
+    "storeAlias": "S01",
+    "status": "COMPLETED",
+    "lines": 1,
+    "totalAmount": 3000,
+    "pickupNo": 2070,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020130,
+        "menuAlias": "M0130",
+        "quantity": 1,
+        "optionItemIds": [
+          8510200096
+        ],
+        "snapshotBasePrice": 3000
+      }
+    ],
+    "description": "선택했던 옵션 품절; 대체 옵션 정상"
+  },
+  {
+    "alias": "R6",
+    "orderId": 8510302006,
+    "account": "qa-reorder",
+    "storeAlias": "S02",
+    "status": "COMPLETED",
+    "lines": 1,
+    "totalAmount": 1500,
+    "pickupNo": 2000,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020201,
+        "menuAlias": "M0201",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      }
+    ],
+    "description": "준비 중인 S02"
+  },
+  {
+    "alias": "R7",
+    "orderId": 8510302007,
+    "account": "qa-reorder",
+    "storeAlias": "S01",
+    "status": "COMPLETED",
+    "lines": 20,
+    "totalAmount": 182500,
+    "pickupNo": 2071,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020101,
+        "menuAlias": "M0101",
+        "quantity": 20,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      },
+      {
+        "menuId": 8510020102,
+        "menuAlias": "M0102",
+        "quantity": 1,
+        "optionItemIds": [
+          8510200001
+        ],
+        "snapshotBasePrice": 2500
+      },
+      {
+        "menuId": 8510020103,
+        "menuAlias": "M0103",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 2000
+      },
+      {
+        "menuId": 8510020104,
+        "menuAlias": "M0104",
+        "quantity": 1,
+        "optionItemIds": [
+          8510200005
+        ],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020105,
+        "menuAlias": "M0105",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020106,
+        "menuAlias": "M0106",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      },
+      {
+        "menuId": 8510020107,
+        "menuAlias": "M0107",
+        "quantity": 1,
+        "optionItemIds": [
+          8510200019
+        ],
+        "snapshotBasePrice": 2500
+      },
+      {
+        "menuId": 8510020109,
+        "menuAlias": "M0109",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020110,
+        "menuAlias": "M0110",
+        "quantity": 1,
+        "optionItemIds": [
+          8510200024,
+          8510200026
+        ],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020111,
+        "menuAlias": "M0111",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      },
+      {
+        "menuId": 8510020112,
+        "menuAlias": "M0112",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 500
+      },
+      {
+        "menuId": 8510020113,
+        "menuAlias": "M0113",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3500
+      },
+      {
+        "menuId": 8510020114,
+        "menuAlias": "M0114",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 12000
+      },
+      {
+        "menuId": 8510020115,
+        "menuAlias": "M0115",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 100000
+      },
+      {
+        "menuId": 8510020116,
+        "menuAlias": "M0116",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      },
+      {
+        "menuId": 8510020117,
+        "menuAlias": "M0117",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 2500
+      },
+      {
+        "menuId": 8510020118,
+        "menuAlias": "M0118",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 2000
+      },
+      {
+        "menuId": 8510020119,
+        "menuAlias": "M0119",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020120,
+        "menuAlias": "M0120",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 3000
+      },
+      {
+        "menuId": 8510020121,
+        "menuAlias": "M0121",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      }
+    ],
+    "description": "20줄; 첫 줄 수량20 + 기존 장바구니1",
+    "cartPrecondition": {
+      "menuId": 8510020101,
+      "quantity": 1,
+      "mergedQuantity": 21
+    }
+  },
+  {
+    "alias": "R8",
+    "orderId": 8510302008,
+    "account": "qa-reorder",
+    "storeAlias": "S08",
+    "status": "COMPLETED",
+    "lines": 1,
+    "totalAmount": 1500,
+    "pickupNo": 2000,
+    "expiresAt": "2026-11-26T09:57:15+09:00",
+    "refundStatus": null,
+    "paymentAttempts": 1,
+    "reorderItems": [
+      {
+        "menuId": 8510020801,
+        "menuAlias": "M0801",
+        "quantity": 1,
+        "optionItemIds": [],
+        "snapshotBasePrice": 1500
+      }
+    ],
+    "description": "다른 OPEN 매장 S08"
+  }
+]

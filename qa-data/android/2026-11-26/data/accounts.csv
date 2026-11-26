@@ -1,0 +1,41 @@
+﻿alias,memberId,email,school,status,consumable,locked,name
+qa01,8510004001,qa01@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa01
+qa02,8510004002,qa02@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa02
+qa03,8510004003,qa03@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa03
+qa04,8510004004,qa04@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa04
+qa05,8510004005,qa05@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa05
+qa-heavy,8510004006,qa-heavy@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-heavy
+qa-page20,8510004007,qa-page20@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-page20
+qa-page21,8510004008,qa-page21@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-page21
+qa-filtered,8510004009,qa-filtered@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-filtered
+qa-live1,8510004010,qa-live1@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-live1
+qa-live3,8510004011,qa-live3@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-live3
+qa-live5,8510004012,qa-live5@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-live5
+qa-wd-block,8510004013,qa-wd-block@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-wd-block
+qa-states,8510004014,qa-states@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-states
+qa-payments,8510004015,qa-payments@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-payments
+qa-popular,8510004016,qa-popular@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-popular
+qa-wd01,8510004017,qa-wd01@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-wd01
+qa-wd02,8510004018,qa-wd02@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-wd02
+qa-wd03,8510004019,qa-wd03@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-wd03
+qa-wd04,8510004020,qa-wd04@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-wd04
+qa-wd05,8510004021,qa-wd05@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-wd05
+qa-pw01,8510004022,qa-pw01@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-pw01
+qa-pw02,8510004023,qa-pw02@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-pw02
+qa-pw03,8510004024,qa-pw03@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-pw03
+qa-pw04,8510004025,qa-pw04@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-pw04
+qa-pw05,8510004026,qa-pw05@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-pw05
+qa-reset01,8510004027,qa-reset01@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-reset01
+qa-reset02,8510004028,qa-reset02@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-reset02
+qa-reset03,8510004029,qa-reset03@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-reset03
+qa-reset04,8510004030,qa-reset04@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-reset04
+qa-reset05,8510004031,qa-reset05@g.eulji.ac.kr,A,ACTIVE,True,False,QA qa-reset05
+qa-suspended,8510004032,qa-suspended@g.eulji.ac.kr,A,SUSPENDED,False,False,QA qa-suspended
+qa-locked,8510004033,qa-locked@g.eulji.ac.kr,A,ACTIVE,False,True,QA qa-locked
+qa-withdrawn,8510004034,qa-withdrawn@g.eulji.ac.kr,A,WITHDRAWN,False,False,탈퇴회원
+qa-school-b,8510004035,qa01@qa-b.example,B,ACTIVE,False,False,QA qa-school-b
+qa-school-c,8510004036,qa01@qa-c.example,C,ACTIVE,False,False,QA qa-school-c
+qa-reorder,8510005001,qa-reorder@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-reorder
+qa-multistore,8510005002,qa-multistore@g.eulji.ac.kr,A,ACTIVE,False,False,QA qa-multistore
+qa-longname-ko,8510005003,qa-longname-ko@g.eulji.ac.kr,A,ACTIVE,False,False,가나다라마바사아자차카타파하가나다라마바
+qa-longname-en,8510005004,qa-longname-en@g.eulji.ac.kr,A,ACTIVE,False,False,ABCDEFGHIJKLMNOPQRST

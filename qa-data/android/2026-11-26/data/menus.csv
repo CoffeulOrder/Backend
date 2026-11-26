@@ -1,0 +1,158 @@
+﻿alias,menuId,storeId,name,basePrice,soldOut,isNew,isEvent,imageKey
+M0101,8510020101,8510002001,아메리카노 QA M0101,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0102,8510020102,8510002001,카페라떼 QA M0102,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0103,8510020103,8510002001,아이스티 QA M0103,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0104,8510020104,8510002001,초코라떼 QA M0104,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0105,8510020105,8510002001,히비스커스 티 QA M0105,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M0106,8510020106,8510002001,아메리카노 QA M0106,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0107,8510020107,8510002001,카페라떼 QA M0107,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M0108,8510020108,8510002001,아이스티 QA M0108,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M0109,8510020109,8510002001,초코라떼 QA M0109,3000,False,False,True,seed/ormo-qa-09/480/360.jpg
+M0110,8510020110,8510002001,히비스커스 티 QA M0110,3000,False,False,False,seed/ormo-qa-10/480/360.jpg
+M0111,8510020111,8510002001,아메리카노 QA M0111,1500,False,False,False,seed/ormo-qa-11/480/360.jpg
+M0112,8510020112,8510002001,카페라떼 QA M0112,500,False,True,True,seed/ormo-qa-12/480/360.jpg
+M0113,8510020113,8510002001,아이스티 QA M0113,3500,False,True,False,seed/ormo-qa-13/480/360.jpg
+M0114,8510020114,8510002001,초코라떼 QA M0114,12000,False,False,False,seed/ormo-qa-14/480/360.jpg
+M0115,8510020115,8510002001,히비스커스 티 QA M0115,100000,False,False,False,seed/ormo-qa-15/480/360.jpg
+M0116,8510020116,8510002001,아주 긴 이름을 가진 시즌 특별 프리미엄 음료 메뉴입니다 M0116,1500,False,False,False,seed/ormo-qa-16/480/360.jpg
+M0117,8510020117,8510002001,카페라떼 QA M0117,2500,False,False,False,seed/ormo-qa-17/480/360.jpg
+M0118,8510020118,8510002001,아이스티 QA M0118,2000,False,False,False,seed/ormo-qa-18/480/360.jpg
+M0119,8510020119,8510002001,초코라떼 QA M0119,3000,False,False,False,seed/ormo-qa-19/480/360.jpg
+M0120,8510020120,8510002001,히비스커스 티 QA M0120,3000,False,False,False,seed/ormo-qa-20/480/360.jpg
+M0121,8510020121,8510002001,아메리카노 QA M0121,1500,False,False,False,seed/ormo-qa-21/480/360.jpg
+M0122,8510020122,8510002001,카페라떼 QA M0122,2500,True,False,False,seed/ormo-qa-22/480/360.jpg
+M0123,8510020123,8510002001,아이스티 QA M0123,2000,True,False,False,seed/ormo-qa-23/480/360.jpg
+M0124,8510020124,8510002001,초코라떼 QA M0124,3000,True,False,False,seed/ormo-qa-24/480/360.jpg
+M0125,8510020125,8510002001,히비스커스 티 QA M0125,3000,False,False,False,seed/ormo-qa-25/480/360.jpg
+M0126,8510020126,8510002001,아메리카노 QA M0126,1500,False,False,False,seed/ormo-qa-26/480/360.jpg
+M0127,8510020127,8510002001,카페라떼 QA M0127,2500,False,False,False,seed/ormo-qa-27/480/360.jpg
+M0128,8510020128,8510002001,아이스티 QA M0128,2000,False,False,False,seed/ormo-qa-28/480/360.jpg
+M0129,8510020129,8510002001,초코라떼 QA M0129,4000,False,False,False,seed/ormo-qa-29/480/360.jpg
+M0130,8510020130,8510002001,히비스커스 티 QA M0130,3000,False,False,False,seed/ormo-qa-30/480/360.jpg
+M0131,8510020131,8510002001,아메리카노 QA M0131,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0132,8510020132,8510002001,카페라떼 QA M0132,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0133,8510020133,8510002001,아이스티 QA M0133,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0134,8510020134,8510002001,초코라떼 QA M0134,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0135,8510020135,8510002001,히비스커스 티 QA M0135,3000,False,False,False,seed/ormo-qa-05/480/360.jpg
+M0136,8510020136,8510002001,아메리카노 QA M0136,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0137,8510020137,8510002001,카페라떼 QA M0137,2500,True,True,True,seed/ormo-qa-07/480/360.jpg
+M0138,8510020138,8510002001,아이스티 QA M0138,2000,True,True,False,seed/ormo-qa-08/480/360.jpg
+M0139,8510020139,8510002001,초코라떼 QA M0139,3000,True,False,True,seed/ormo-qa-09/480/360.jpg
+M0140,8510020140,8510002001,히비스커스 티 QA M0140,3000,True,False,False,seed/ormo-qa-10/480/360.jpg
+M0141,8510020141,8510002001,아메리카노 QA M0141,1500,True,False,False,seed/ormo-qa-11/480/360.jpg
+M0142,8510020142,8510002001,카페라떼 QA M0142,2500,True,False,False,seed/ormo-qa-12/480/360.jpg
+M0143,8510020143,8510002001,아이스티 QA M0143,2000,False,False,False,
+M0144,8510020144,8510002001,초코라떼 QA M0144,3000,False,False,False,
+M0145,8510020145,8510002001,히비스커스 티 QA M0145,3000,False,False,False,
+M0146,8510020146,8510002001,아메리카노 QA M0146,1500,False,False,False,
+M0147,8510020147,8510002001,카페라떼 QA M0147,2500,False,False,False,ormo-qa-missing-47
+M0148,8510020148,8510002001,아이스티 QA M0148,2000,False,False,False,ormo-qa-missing-48
+M0201,8510020201,8510002002,아메리카노 QA M0201,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0202,8510020202,8510002002,카페라떼 QA M0202,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0203,8510020203,8510002002,아이스티 QA M0203,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0204,8510020204,8510002002,초코라떼 QA M0204,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0205,8510020205,8510002002,히비스커스 티 QA M0205,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M0206,8510020206,8510002002,아메리카노 QA M0206,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0207,8510020207,8510002002,카페라떼 QA M0207,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M0208,8510020208,8510002002,아이스티 QA M0208,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M0209,8510020209,8510002002,초코라떼 QA M0209,3000,False,False,True,seed/ormo-qa-09/480/360.jpg
+M0210,8510020210,8510002002,히비스커스 티 QA M0210,3000,False,False,False,seed/ormo-qa-10/480/360.jpg
+M0211,8510020211,8510002002,아메리카노 QA M0211,1500,False,False,False,seed/ormo-qa-11/480/360.jpg
+M0212,8510020212,8510002002,카페라떼 QA M0212,500,False,True,True,seed/ormo-qa-12/480/360.jpg
+M0213,8510020213,8510002002,아이스티 QA M0213,3500,False,True,False,seed/ormo-qa-13/480/360.jpg
+M0214,8510020214,8510002002,초코라떼 QA M0214,12000,False,False,False,seed/ormo-qa-14/480/360.jpg
+M0215,8510020215,8510002002,히비스커스 티 QA M0215,100000,False,False,False,seed/ormo-qa-15/480/360.jpg
+M0216,8510020216,8510002002,아주 긴 이름을 가진 시즌 특별 프리미엄 음료 메뉴입니다 M0216,1500,False,False,False,seed/ormo-qa-16/480/360.jpg
+M0217,8510020217,8510002002,카페라떼 QA M0217,2500,False,False,False,seed/ormo-qa-17/480/360.jpg
+M0218,8510020218,8510002002,아이스티 QA M0218,2000,False,False,False,seed/ormo-qa-18/480/360.jpg
+M0219,8510020219,8510002002,초코라떼 QA M0219,3000,False,False,False,seed/ormo-qa-19/480/360.jpg
+M0220,8510020220,8510002002,히비스커스 티 QA M0220,3000,False,False,False,seed/ormo-qa-20/480/360.jpg
+M0301,8510020301,8510002003,아메리카노 QA M0301,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0302,8510020302,8510002003,카페라떼 QA M0302,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0303,8510020303,8510002003,아이스티 QA M0303,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0304,8510020304,8510002003,초코라떼 QA M0304,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0305,8510020305,8510002003,히비스커스 티 QA M0305,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M0306,8510020306,8510002003,아메리카노 QA M0306,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0307,8510020307,8510002003,카페라떼 QA M0307,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M0308,8510020308,8510002003,아이스티 QA M0308,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M0309,8510020309,8510002003,초코라떼 QA M0309,3000,False,False,True,seed/ormo-qa-09/480/360.jpg
+M0310,8510020310,8510002003,히비스커스 티 QA M0310,3000,False,False,False,seed/ormo-qa-10/480/360.jpg
+M0311,8510020311,8510002003,아메리카노 QA M0311,1500,False,False,False,seed/ormo-qa-11/480/360.jpg
+M0312,8510020312,8510002003,카페라떼 QA M0312,500,False,True,True,seed/ormo-qa-12/480/360.jpg
+M0401,8510020401,8510002004,아메리카노 QA M0401,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0402,8510020402,8510002004,카페라떼 QA M0402,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0403,8510020403,8510002004,아이스티 QA M0403,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0404,8510020404,8510002004,초코라떼 QA M0404,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0405,8510020405,8510002004,히비스커스 티 QA M0405,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M0406,8510020406,8510002004,아메리카노 QA M0406,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0407,8510020407,8510002004,카페라떼 QA M0407,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M0408,8510020408,8510002004,아이스티 QA M0408,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M0409,8510020409,8510002004,초코라떼 QA M0409,3000,False,False,True,seed/ormo-qa-09/480/360.jpg
+M0410,8510020410,8510002004,히비스커스 티 QA M0410,3000,False,False,False,seed/ormo-qa-10/480/360.jpg
+M0411,8510020411,8510002004,아메리카노 QA M0411,1500,False,False,False,seed/ormo-qa-11/480/360.jpg
+M0412,8510020412,8510002004,카페라떼 QA M0412,500,False,True,True,seed/ormo-qa-12/480/360.jpg
+M0501,8510020501,8510002005,아메리카노 QA M0501,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0502,8510020502,8510002005,카페라떼 QA M0502,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0503,8510020503,8510002005,아이스티 QA M0503,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0504,8510020504,8510002005,초코라떼 QA M0504,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0505,8510020505,8510002005,히비스커스 티 QA M0505,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M0506,8510020506,8510002005,아메리카노 QA M0506,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0507,8510020507,8510002005,카페라떼 QA M0507,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M0508,8510020508,8510002005,아이스티 QA M0508,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M0509,8510020509,8510002005,초코라떼 QA M0509,3000,False,False,True,seed/ormo-qa-09/480/360.jpg
+M0510,8510020510,8510002005,히비스커스 티 QA M0510,3000,False,False,False,seed/ormo-qa-10/480/360.jpg
+M0511,8510020511,8510002005,아메리카노 QA M0511,1500,False,False,False,seed/ormo-qa-11/480/360.jpg
+M0512,8510020512,8510002005,카페라떼 QA M0512,500,False,True,True,seed/ormo-qa-12/480/360.jpg
+M0513,8510020513,8510002005,아이스티 QA M0513,3500,False,True,False,seed/ormo-qa-13/480/360.jpg
+M0514,8510020514,8510002005,초코라떼 QA M0514,12000,False,False,False,seed/ormo-qa-14/480/360.jpg
+M0515,8510020515,8510002005,히비스커스 티 QA M0515,100000,False,False,False,seed/ormo-qa-15/480/360.jpg
+M0601,8510020601,8510002006,아메리카노 QA M0601,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0602,8510020602,8510002006,카페라떼 QA M0602,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0603,8510020603,8510002006,아이스티 QA M0603,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0604,8510020604,8510002006,초코라떼 QA M0604,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0605,8510020605,8510002006,히비스커스 티 QA M0605,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M0606,8510020606,8510002006,아메리카노 QA M0606,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0607,8510020607,8510002006,카페라떼 QA M0607,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M0608,8510020608,8510002006,아이스티 QA M0608,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M0609,8510020609,8510002006,초코라떼 QA M0609,3000,False,False,True,seed/ormo-qa-09/480/360.jpg
+M0610,8510020610,8510002006,히비스커스 티 QA M0610,3000,False,False,False,seed/ormo-qa-10/480/360.jpg
+M0701,8510020701,8510002007,아메리카노 QA M0701,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0702,8510020702,8510002007,카페라떼 QA M0702,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0703,8510020703,8510002007,아이스티 QA M0703,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0704,8510020704,8510002007,초코라떼 QA M0704,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M0705,8510020705,8510002007,히비스커스 티 QA M0705,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M0706,8510020706,8510002007,아메리카노 QA M0706,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M0707,8510020707,8510002007,카페라떼 QA M0707,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M0708,8510020708,8510002007,아이스티 QA M0708,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M0801,8510020801,8510002008,아메리카노 QA M0801,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M0802,8510020802,8510002008,카페라떼 QA M0802,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M0803,8510020803,8510002008,아이스티 QA M0803,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M0901,8510020901,8510002009,아메리카노 QA M0901,1500,True,False,False,seed/ormo-qa-01/480/360.jpg
+M0902,8510020902,8510002009,카페라떼 QA M0902,2500,True,False,False,seed/ormo-qa-02/480/360.jpg
+M0903,8510020903,8510002009,아이스티 QA M0903,2000,True,False,False,seed/ormo-qa-03/480/360.jpg
+M0904,8510020904,8510002009,초코라떼 QA M0904,3000,True,False,False,seed/ormo-qa-04/480/360.jpg
+M0905,8510020905,8510002009,히비스커스 티 QA M0905,3000,True,False,True,seed/ormo-qa-05/480/360.jpg
+M0906,8510020906,8510002009,아메리카노 QA M0906,1500,True,False,False,seed/ormo-qa-06/480/360.jpg
+M1001,8510021001,8510002010,아메리카노 QA M1001,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M1002,8510021002,8510002010,카페라떼 QA M1002,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M1003,8510021003,8510002010,아이스티 QA M1003,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M1004,8510021004,8510002010,초코라떼 QA M1004,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M1005,8510021005,8510002010,히비스커스 티 QA M1005,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M1201,8510021201,8510002012,아메리카노 QA M1201,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M1202,8510021202,8510002012,카페라떼 QA M1202,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M1203,8510021203,8510002012,아이스티 QA M1203,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M1204,8510021204,8510002012,초코라떼 QA M1204,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M1205,8510021205,8510002012,히비스커스 티 QA M1205,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M1206,8510021206,8510002012,아메리카노 QA M1206,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M1207,8510021207,8510002012,카페라떼 QA M1207,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M1208,8510021208,8510002012,아이스티 QA M1208,2000,False,False,False,seed/ormo-qa-08/480/360.jpg
+M1209,8510021209,8510002012,초코라떼 QA M1209,3000,False,False,True,seed/ormo-qa-09/480/360.jpg
+M1210,8510021210,8510002012,히비스커스 티 QA M1210,3000,False,False,False,seed/ormo-qa-10/480/360.jpg
+M1301,8510021301,8510002013,아메리카노 QA M1301,1500,False,False,False,seed/ormo-qa-01/480/360.jpg
+M1302,8510021302,8510002013,카페라떼 QA M1302,2500,False,False,False,seed/ormo-qa-02/480/360.jpg
+M1303,8510021303,8510002013,아이스티 QA M1303,2000,False,False,False,seed/ormo-qa-03/480/360.jpg
+M1304,8510021304,8510002013,초코라떼 QA M1304,3000,False,False,False,seed/ormo-qa-04/480/360.jpg
+M1305,8510021305,8510002013,히비스커스 티 QA M1305,3000,False,False,True,seed/ormo-qa-05/480/360.jpg
+M1306,8510021306,8510002013,아메리카노 QA M1306,1500,False,False,False,seed/ormo-qa-06/480/360.jpg
+M1307,8510021307,8510002013,카페라떼 QA M1307,2500,False,False,False,seed/ormo-qa-07/480/360.jpg
+M1308,8510021308,8510002013,아이스티 QA M1308,2000,False,False,False,seed/ormo-qa-08/480/360.jpg

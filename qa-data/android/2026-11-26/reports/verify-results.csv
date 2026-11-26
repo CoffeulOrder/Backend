@@ -1,0 +1,78 @@
+﻿check,actual,expected,passed
+학교 A/B/C,3,3,True
+QA store,13,13,True
+QA member,40,40,True
+QA menu_item,157,157,True
+QA orders,301,301,True
+S01 메뉴,48,48,True
+S01 카테고리,7,7,True
+S01 이미지 null,4,4,True
+S01 의도적 404,2,2,True
+S01 대기,8,8,True
+S02 대기,0,0,True
+qa-heavy,150,150,True
+qa-page20,20,20,True
+qa-page21,21,21,True
+qa-filtered,30,30,True
+S01 직접 품절,9,9,True
+S01 빈 이름 카테고리,1,1,True
+S01 메뉴 없는 카테고리,1,1,True
+S01 배지·품절 조합,8,8,True
+QA 주문 상태 9개,9,9,True
+qa-live1 진행,1,1,True
+qa-live3 진행,3,3,True
+qa-live5 진행,5,5,True
+qa-wd-block 진행,1,1,True
+qa-wd 여유 계정,5,5,True
+qa-pw 여유 계정,5,5,True
+가입용 미등록 이메일,0,0,True
+M0112 신규 경계,1,1,True
+M0113 신규 경계,1,1,True
+M0114 신규 경계,1,1,True
+항목·주문 합계 불일치,0,0,True
+전액 환불 금액 불일치,0,0,True
+재시도 5개인 주문,2,2,True
+O1 그룹,0,0,True
+O2 그룹,1,1,True
+O3 그룹,1,1,True
+O4 그룹,1,1,True
+O5 그룹,1,1,True
+O6 그룹,1,1,True
+O7 그룹,1,1,True
+O8 그룹,1,1,True
+O9 그룹,1,1,True
+O10 그룹,3,3,True
+O11 그룹,1,1,True
+qa-heavy S01,80,80,True
+qa-heavy S02,70,70,True
+qa-heavy S01 줄 수 4종,4,4,True
+qa-page20 S01,20,20,True
+qa-page21 S01,21,21,True
+qa-filtered S01,30,30,True
+qa-wd-block S01,1,1,True
+R1 완료,1,1,True
+R1 줄 수,2,2,True
+R2 완료,1,1,True
+R2 줄 수,3,3,True
+R3 완료,1,1,True
+R3 줄 수,2,2,True
+R4 완료,1,1,True
+R4 줄 수,1,1,True
+R5 완료,1,1,True
+R5 줄 수,1,1,True
+R6 완료,1,1,True
+R6 줄 수,1,1,True
+R7 완료,1,1,True
+R7 줄 수,20,20,True
+R8 완료,1,1,True
+R8 줄 수,1,1,True
+qa-longname-ko 이름20자,20,20,True
+qa-longname-en 이름20자,20,20,True
+qa-multistore S01,2,2,True
+qa-multistore S08,2,2,True
+qa-multistore S02,1,1,True
+S01 R1/R2 전용 품절,3,3,True
+R3 HIDDEN,1,1,True
+R4 가격 상승,1,1,True
+R5 과거 옵션 품절,1,1,True
+S01 구매 가능(최소25),37,37,True

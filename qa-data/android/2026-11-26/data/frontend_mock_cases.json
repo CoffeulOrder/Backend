@@ -1,0 +1,127 @@
+{
+  "warning": "FE 전용 방어/미지원 상태 예시. 실제 API 계약이 아니며 DB에 넣지 않는다.",
+  "backendPersistence": false,
+  "stores": [
+    {
+      "alias": "S01",
+      "status": "OPEN",
+      "requestedReopenAt": null
+    },
+    {
+      "alias": "S02",
+      "status": "PAUSED",
+      "requestedReopenAt": "2026-11-26T13:12:15+09:00"
+    },
+    {
+      "alias": "S03",
+      "status": "PAUSED",
+      "requestedReopenAt": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "alias": "S04",
+      "status": "PAUSED",
+      "requestedReopenAt": null
+    },
+    {
+      "alias": "S05",
+      "status": "CLOSED",
+      "requestedReopenAt": "2026-11-26T13:12:15+09:00"
+    },
+    {
+      "alias": "S06",
+      "status": "CLOSED",
+      "requestedReopenAt": "2026-11-27T08:30:00+09:00"
+    },
+    {
+      "alias": "S07",
+      "status": "CLOSED",
+      "requestedReopenAt": null
+    }
+  ],
+  "unsupportedSellerNulls": [
+    {
+      "alias": "S03",
+      "contactPhone": null
+    },
+    {
+      "alias": "S04",
+      "businessRegNo": null
+    },
+    {
+      "alias": "S10",
+      "businessName": "QA 가상상호",
+      "representativeName": "가상대표",
+      "businessRegNo": null,
+      "businessAddress": null,
+      "contactPhone": null,
+      "mailOrderRegNo": null
+    }
+  ],
+  "overnightHours": {
+    "alias": "S10",
+    "openTime": "22:00:00",
+    "closeTime": "02:00:00",
+    "nextDay": true
+  },
+  "unlimitedOption": {
+    "case": "O6",
+    "maxSelect": null
+  },
+  "negativeOption": {
+    "priceDelta": -500,
+    "expected": "DB rejects"
+  },
+  "missingOrderStates": [
+    "UNCLAIMED",
+    "REFUNDED"
+  ],
+  "paymentDisplay": [
+    {
+      "method": "CARD",
+      "maskedCardNumber": "0000-****-****-0000",
+      "approvalNumber": "QA000001"
+    },
+    {
+      "method": "KAKAOPAY",
+      "maskedCardNumber": null,
+      "approvalNumber": null
+    },
+    {
+      "method": "NAVERPAY",
+      "maskedCardNumber": null,
+      "approvalNumber": null
+    },
+    {
+      "method": "TOSSPAY",
+      "maskedCardNumber": null,
+      "approvalNumber": null
+    }
+  ],
+  "memoTooLong": {
+    "requestMemo": "가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가가",
+    "expected": "현재 DB VARCHAR(100) 초과. 현행 앱/BE 오류 응답을 별도 확인"
+  },
+  "maintenance": {
+    "httpStatus": 503,
+    "code": "MAINTENANCE",
+    "endsAt": "2026-11-26T13:12:15+09:00",
+    "implemented": false
+  },
+  "paymentConditions": [
+    {
+      "code": "PY009",
+      "mode": "PortOne 테스트 또는 별도 FE mock 필요",
+      "fakeGatewayCanForce": false
+    },
+    {
+      "code": "PY012",
+      "mode": "PortOne 테스트 또는 별도 FE mock 필요",
+      "fakeGatewayCanForce": false
+    },
+    {
+      "code": "PY013",
+      "mode": "PortOne 테스트 또는 별도 FE mock 필요",
+      "fakeGatewayCanForce": false
+    }
+  ]
+}

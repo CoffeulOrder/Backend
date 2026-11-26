@@ -1,0 +1,391 @@
+{
+  "verificationDatabase" : "coffeul",
+  "baseTime" : "2026-11-26T12:37:15+09:00",
+  "environment" : "isolated Testcontainers MySQL 8.4",
+  "checks" : [ {
+    "actual" : 3,
+    "check" : "학교 A/B/C",
+    "expected" : 3,
+    "passed" : true
+  }, {
+    "actual" : 13,
+    "check" : "QA store",
+    "expected" : 13,
+    "passed" : true
+  }, {
+    "actual" : 40,
+    "check" : "QA member",
+    "expected" : 40,
+    "passed" : true
+  }, {
+    "actual" : 157,
+    "check" : "QA menu_item",
+    "expected" : 157,
+    "passed" : true
+  }, {
+    "actual" : 301,
+    "check" : "QA orders",
+    "expected" : 301,
+    "passed" : true
+  }, {
+    "actual" : 48,
+    "check" : "S01 메뉴",
+    "expected" : 48,
+    "passed" : true
+  }, {
+    "actual" : 7,
+    "check" : "S01 카테고리",
+    "expected" : 7,
+    "passed" : true
+  }, {
+    "actual" : 4,
+    "check" : "S01 이미지 null",
+    "expected" : 4,
+    "passed" : true
+  }, {
+    "actual" : 2,
+    "check" : "S01 의도적 404",
+    "expected" : 2,
+    "passed" : true
+  }, {
+    "actual" : 8,
+    "check" : "S01 대기",
+    "expected" : 8,
+    "passed" : true
+  }, {
+    "actual" : 0,
+    "check" : "S02 대기",
+    "expected" : 0,
+    "passed" : true
+  }, {
+    "actual" : 150,
+    "check" : "qa-heavy",
+    "expected" : 150,
+    "passed" : true
+  }, {
+    "actual" : 20,
+    "check" : "qa-page20",
+    "expected" : 20,
+    "passed" : true
+  }, {
+    "actual" : 21,
+    "check" : "qa-page21",
+    "expected" : 21,
+    "passed" : true
+  }, {
+    "actual" : 30,
+    "check" : "qa-filtered",
+    "expected" : 30,
+    "passed" : true
+  }, {
+    "actual" : 9,
+    "check" : "S01 직접 품절",
+    "expected" : 9,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "S01 빈 이름 카테고리",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "S01 메뉴 없는 카테고리",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 8,
+    "check" : "S01 배지·품절 조합",
+    "expected" : 8,
+    "passed" : true
+  }, {
+    "actual" : 9,
+    "check" : "QA 주문 상태 9개",
+    "expected" : 9,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "qa-live1 진행",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 3,
+    "check" : "qa-live3 진행",
+    "expected" : 3,
+    "passed" : true
+  }, {
+    "actual" : 5,
+    "check" : "qa-live5 진행",
+    "expected" : 5,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "qa-wd-block 진행",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 5,
+    "check" : "qa-wd 여유 계정",
+    "expected" : 5,
+    "passed" : true
+  }, {
+    "actual" : 5,
+    "check" : "qa-pw 여유 계정",
+    "expected" : 5,
+    "passed" : true
+  }, {
+    "actual" : 0,
+    "check" : "가입용 미등록 이메일",
+    "expected" : 0,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "M0112 신규 경계",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "M0113 신규 경계",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "M0114 신규 경계",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 0,
+    "check" : "항목·주문 합계 불일치",
+    "expected" : 0,
+    "passed" : true
+  }, {
+    "actual" : 0,
+    "check" : "전액 환불 금액 불일치",
+    "expected" : 0,
+    "passed" : true
+  }, {
+    "actual" : 2,
+    "check" : "재시도 5개인 주문",
+    "expected" : 2,
+    "passed" : true
+  }, {
+    "actual" : 0,
+    "check" : "O1 그룹",
+    "expected" : 0,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O2 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O3 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O4 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O5 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O6 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O7 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O8 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O9 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 3,
+    "check" : "O10 그룹",
+    "expected" : 3,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "O11 그룹",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 80,
+    "check" : "qa-heavy S01",
+    "expected" : 80,
+    "passed" : true
+  }, {
+    "actual" : 70,
+    "check" : "qa-heavy S02",
+    "expected" : 70,
+    "passed" : true
+  }, {
+    "actual" : 4,
+    "check" : "qa-heavy S01 줄 수 4종",
+    "expected" : 4,
+    "passed" : true
+  }, {
+    "actual" : 20,
+    "check" : "qa-page20 S01",
+    "expected" : 20,
+    "passed" : true
+  }, {
+    "actual" : 21,
+    "check" : "qa-page21 S01",
+    "expected" : 21,
+    "passed" : true
+  }, {
+    "actual" : 30,
+    "check" : "qa-filtered S01",
+    "expected" : 30,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "qa-wd-block S01",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R1 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 2,
+    "check" : "R1 줄 수",
+    "expected" : 2,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R2 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 3,
+    "check" : "R2 줄 수",
+    "expected" : 3,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R3 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 2,
+    "check" : "R3 줄 수",
+    "expected" : 2,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R4 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R4 줄 수",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R5 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R5 줄 수",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R6 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R6 줄 수",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R7 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 20,
+    "check" : "R7 줄 수",
+    "expected" : 20,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R8 완료",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R8 줄 수",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 20,
+    "check" : "qa-longname-ko 이름20자",
+    "expected" : 20,
+    "passed" : true
+  }, {
+    "actual" : 20,
+    "check" : "qa-longname-en 이름20자",
+    "expected" : 20,
+    "passed" : true
+  }, {
+    "actual" : 2,
+    "check" : "qa-multistore S01",
+    "expected" : 2,
+    "passed" : true
+  }, {
+    "actual" : 2,
+    "check" : "qa-multistore S08",
+    "expected" : 2,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "qa-multistore S02",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 3,
+    "check" : "S01 R1/R2 전용 품절",
+    "expected" : 3,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R3 HIDDEN",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R4 가격 상승",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 1,
+    "check" : "R5 과거 옵션 품절",
+    "expected" : 1,
+    "passed" : true
+  }, {
+    "actual" : 37,
+    "check" : "S01 구매 가능(최소25)",
+    "expected" : 37,
+    "passed" : true
+  } ]
+}

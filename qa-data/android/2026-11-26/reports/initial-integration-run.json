@@ -1,0 +1,77 @@
+{
+  "baseTime": "2026-11-26T12:37:15+09:00",
+  "tests": 17,
+  "failures": 1,
+  "errors": 0,
+  "skipped": 0,
+  "cases": [
+    {
+      "name": "verifySqlExpectedCountsAllMatchAndContainsNoPrivateFields",
+      "passed": true
+    },
+    {
+      "name": "verificationErrorsAndLoginErrorsAreReproducible",
+      "passed": false
+    },
+    {
+      "name": "unownedFixedIdAndNaturalKeyCollisionAbortBeforeChangingData",
+      "passed": true
+    },
+    {
+      "name": "resetRestoresWithdrawnAndChangedPasswordsAndRemovesOnlyQaRuntimeOrders",
+      "passed": true
+    },
+    {
+      "name": "suppliedPythonHelperUsesRealHttpWithoutPrintingTokens",
+      "passed": true
+    },
+    {
+      "name": "qaPendingPaymentCanUseActualFakeConfirmAndNormalStaffApis",
+      "passed": true
+    },
+    {
+      "name": "manualAdvanceFillsTimelineAndRejectsRewind",
+      "passed": true
+    },
+    {
+      "name": "reseedIsIdempotentAndPreservesNonQaData",
+      "passed": true
+    },
+    {
+      "name": "multistoreAndLongNamesReallyAppearInMemberAndOrderResponses",
+      "passed": true
+    },
+    {
+      "name": "accountsReallyLoginAndPagingFiltersRunBeforePagination",
+      "passed": true
+    },
+    {
+      "name": "unusedSignupMailboxReallyRegistersThenResetMakesItUnusedAgain",
+      "passed": true
+    },
+    {
+      "name": "imagesOptionsSnapshotsAndKstAreReturnedFromActualDtos",
+      "passed": true
+    },
+    {
+      "name": "reopenedHistoryMaintainsCountsAndCanActuallyCreateANewCartOrder",
+      "passed": true
+    },
+    {
+      "name": "allEightReorderCasesReachTheirExpectedCreateOrderOutcome",
+      "passed": true
+    },
+    {
+      "name": "fixedCodeUsesRealConfirmationAndPasswordResetWithoutSendingMail",
+      "passed": true
+    },
+    {
+      "name": "wrongDatabaseGuardDoesNotChangeQaOrders",
+      "passed": true
+    },
+    {
+      "name": "reorderCasesExposeExactlyTheExpectedMenuMutationsAndRebuildThem",
+      "passed": true
+    }
+  ]
+}
