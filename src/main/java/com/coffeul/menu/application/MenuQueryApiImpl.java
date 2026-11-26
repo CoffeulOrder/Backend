@@ -26,7 +26,7 @@ public class MenuQueryApiImpl implements MenuQueryApi {
     @Transactional(readOnly = true)
     public Optional<MenuItemView> findMenuItem(Long storeId, Long menuId) {
         return menuItemRepository.findById(menuId)
-                .filter(item -> item.getStoreId().equals(storeId))
+                .filter(item -> item.getStoreId().equals(storeId) && "ACTIVE".equals(item.getStatus()))
                 .map(this::toView);
     }
 

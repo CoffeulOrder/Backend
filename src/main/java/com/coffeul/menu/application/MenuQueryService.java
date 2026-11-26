@@ -57,7 +57,8 @@ public class MenuQueryService {
                 : optionGroupRepository.findByMenuItemIdInOrderBySortOrder(items.stream().map(MenuItem::getId).toList())
                         .stream().map(OptionGroup::getMenuItemId).collect(java.util.stream.Collectors.toSet());
 
-        return items.stream().map(item -> toResponse(item, idsWithOptions.contains(item.getId()))).toList();
+        return items.stream().filter(item -> "ACTIVE".equals(item.getStatus()))
+                .map(item -> toResponse(item, idsWithOptions.contains(item.getId()))).toList();
     }
 
     public MenuDetailResponse detail(Long storeId, Long menuId) {
