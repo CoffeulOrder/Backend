@@ -1,0 +1,14 @@
+﻿alias,storeId,status,requestedReopenAt,reopenSupported,menuCount,school,latitude,longitude,coordinateSupported
+S01,8510002001,OPEN,,False,48,A,,,False
+S02,8510002002,PAUSED,2026-11-26T13:12:15+09:00,False,20,A,,,False
+S03,8510002003,PAUSED,2026-11-27T08:30:00+09:00,False,12,A,,,False
+S04,8510002004,PAUSED,,False,12,A,,,False
+S05,8510002005,CLOSED,2026-11-26T13:12:15+09:00,False,15,A,,,False
+S06,8510002006,CLOSED,2026-11-27T08:30:00+09:00,False,10,A,,,False
+S07,8510002007,CLOSED,,False,8,A,,,False
+S08,8510002008,OPEN,,False,3,A,,,False
+S09,8510002009,OPEN,,False,6,A,,,False
+S10,8510002010,OPEN,,False,5,A,,,False
+S11,8510002011,OPEN,,False,0,A,,,False
+S12,8510002012,OPEN,,False,10,B,,,False
+S13,8510002013,OPEN,,False,8,C,,,False
