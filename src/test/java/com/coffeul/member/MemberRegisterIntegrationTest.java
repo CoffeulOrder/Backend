@@ -8,6 +8,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
@@ -22,6 +24,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -110,6 +113,68 @@ class MemberRegisterIntegrationTest extends AbstractIntegrationTest {
                 .andExpect(jsonPath("$.errors[0].field").value("name"));
 
         assertThat(fixtures.countMembersByEmail(email)).isZero();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"가나다라마바사아자차", "abcdefghij", "0123456789", "김 Min 1234", "김 민 수 1234"})
+    void tenCharacterNamesIncludingSpacesAreAccepted(String name) throws Exception {
+        assertThat(name).hasSize(10);
+        String token = issueVerificationToken("SIGNUP");
+
+        MvcResult response = mockMvc.perform(registerRequest(token, name, "coffee1234", bothTermsAgreed()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value(name))
+                .andReturn();
+
+        long memberId = objectMapper.readTree(response.getResponse().getContentAsString())
+                .path("data").path("memberId").asLong();
+        assertThat(jdbcTemplate.queryForObject("SELECT name FROM member WHERE id = ?", String.class, memberId))
+                .isEqualTo(name);
+        assertThat(fixtures.consumedAtOf(email)).isNotNull();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"가나다라마바사아자차카", "abcdefghijk", "01234567890", "김 Min 12345", "김 민 수 12345"})
+    void elevenCharacterNamesDoNotConsumeVerificationToken(String name) throws Exception {
+        assertThat(name).hasSize(11);
+        String token = issueVerificationToken("SIGNUP");
+
+        mockMvc.perform(registerRequest(token, name, "coffee1234", bothTermsAgreed()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("C001"))
+                .andExpect(jsonPath("$.errors[0].field").value("name"))
+                .andExpect(jsonPath("$.errors[0].reason").value("이름은 10자 이하로 입력해주세요."));
+
+        assertThat(fixtures.countMembersByEmail(email)).isZero();
+        assertThat(fixtures.consumedAtOf(email)).isNull();
+
+        // 입력 오류를 고쳐 제출할 때 이메일 인증을 다시 요구하지 않는다.
+        String correctedName = name.substring(0, 10);
+        mockMvc.perform(registerRequest(token, correctedName, "coffee1234", bothTermsAgreed()))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.data.name").value(correctedName));
+        assertThat(fixtures.countMembersByEmail(email)).isEqualTo(1);
+        assertThat(fixtures.consumedAtOf(email)).isNotNull();
+    }
+
+    @Test
+    void existingLongNameRemainsReadableAfterSignupLimitChange() throws Exception {
+        String legacyName = "가".repeat(20);
+        long memberId = fixtures.createMemberWithPassword(schoolId, email, "coffee1234", "ACTIVE");
+        jdbcTemplate.update("UPDATE member SET name = ? WHERE id = ?", legacyName, memberId);
+
+        MvcResult response = mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("email", email, "password", "coffee1234"))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.member.name").value(legacyName))
+                .andReturn();
+        String accessToken = objectMapper.readTree(response.getResponse().getContentAsString())
+                .path("data").path("accessToken").asText();
+
+        mockMvc.perform(get("/api/v1/members/me").header("Authorization", "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.name").value(legacyName));
     }
 
     @Test

@@ -12,7 +12,7 @@ public record MemberRegisterRequest(
         String verificationToken,
 
         @NotBlank(message = "이름을 입력해주세요.")
-        @Size(max = 30, message = "이름은 30자 이하로 입력해주세요.")
+        @Size(max = 10, message = "이름은 10자 이하로 입력해주세요.")
         String name,
 
         @NotBlank(message = "비밀번호를 입력해주세요.")
